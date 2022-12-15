@@ -622,7 +622,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('wishlist-rs-bc515a4ce84f3706_bg.wasm', import.meta.url);
+        input = new URL('wishlist-fd1c7a5788f86343_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
