@@ -44,13 +44,13 @@ impl Component for Index {
 		html! {<>
 			<ybc::Navbar classes={"is-dark"}
 				navbrand={Some(html! {
-					<NavbarItem href={"/"} tag={NavbarItemTag::A}>
+					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>
 						<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
 					</NavbarItem>
 				})}
 				navstart={Some(html! {<>
-					<NavbarItem href={""} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
-					<NavbarItem href={"guide"} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
+					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
+					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 				</>})}
 				navend={Some(html! {<>
 					{account}
@@ -114,6 +114,16 @@ impl Route {
 			Self::NotFound => html! {
 				<h1>{"404: Page not found"}</h1>
 			},
+		}
+	}
+}
+
+impl yew::html::IntoPropValue<Option<String>> for Route {
+	fn into_prop_value(self) -> Option<String> {
+		match self {
+			Self::Home => None,
+			Self::UserGuide => Some("guide".to_owned()),
+			Self::NotFound => Some("404".to_owned()),
 		}
 	}
 }
