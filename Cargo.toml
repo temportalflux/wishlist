@@ -13,3 +13,5 @@ log = "0.4"
 yew = { version = "0.19" }
 ybc = { version = "0.3.0-beta.0" } # depeonds on yew:0.19
 yew-router = { version = "0.16" } # limited by yew:0.19
+yew-oauth2 = "0.4"
+gloo-storage = "0.2"

@@ -1,47 +1,28 @@
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
+use yew_oauth2::{
+	oauth2::Client,
+	prelude::{Authenticated, NotAuthenticated, OAuth2Dispatcher, OAuth2Operations},
+};
 use yew_router::Routable;
 
-use crate::api::auth;
-
-pub enum Action {
-	SignIn,
-}
-
-pub struct Page {
-	token: bool,
-}
-
+pub struct Page;
 impl Component for Page {
-	type Message = Action;
+	type Message = ();
 	type Properties = ();
 
 	fn create(_ctx: &Context<Self>) -> Self {
-		Self { token: false }
+		Self
 	}
 
 	#[allow(unused_parens)]
 	fn view(&self, ctx: &Context<Self>) -> Html {
-		let link = ctx.link();
-		let signin = link.callback(|_| Action::SignIn);
-
-		let account = match self.token {
-			true => html! {
-				<NavbarDropdown navlink={(html! {<>
-					<Image size={Some(ybc::ImageSize::Is32x32)}>
-						<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-					</Image>
-					{"Name"}
-				</>})}>
-					<NavbarItem href={auth::Route::Logout} tag={NavbarItemTag::A}>{"Logout"}</NavbarItem>
-				</NavbarDropdown>
-			},
-			false => html! {
-				<NavbarItem>
-					<Button classes={"is-primary is-dark"} onclick={signin}>{"Sign In"}</Button>
-				</NavbarItem>
-			},
-		};
+		let login = ctx.link().callback_once(|_| {
+			OAuth2Dispatcher::<Client>::new().start_login();
+		});
+		let logout = ctx.link().callback_once(|_| {
+			OAuth2Dispatcher::<Client>::new().logout();
+		});
 
 		html! {<>
 			<ybc::Navbar classes={"is-dark"}
@@ -55,21 +36,27 @@ impl Component for Page {
 					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 				</>})}
 				navend={Some(html! {<>
-					{account}
+					<Authenticated>
+						<NavbarDropdown navlink={(html! {<>
+							<Image size={Some(ybc::ImageSize::Is32x32)}>
+								<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
+							</Image>
+							{"Name"}
+						</>})}>
+							<NavbarItem>
+								<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
+							</NavbarItem>
+						</NavbarDropdown>
+					</Authenticated>
+					<NotAuthenticated>
+						<NavbarItem>
+							<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+						</NavbarItem>
+					</NotAuthenticated>
 				</>})}
 			/>
 			{ <Route as crate::route::Route>::switch() }
 		</>}
-	}
-
-	fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-		match msg {
-			Action::SignIn => {
-				log::debug!("Sign In");
-				self.token = true;
-				true
-			}
-		}
 	}
 }
 

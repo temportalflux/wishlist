@@ -1,4 +1,5 @@
 use yew::{html, Component, Context, Html};
+use yew_oauth2::oauth2::OAuth2;
 use yew_router::{BrowserRouter, Routable};
 
 pub mod api;
@@ -34,9 +35,16 @@ impl Component for Root {
 
 	#[allow(unused_parens)]
 	fn view(&self, _ctx: &Context<Self>) -> Html {
+		let config = yew_oauth2::oauth2::Config {
+			client_id: "479587a8a2c453a44643".to_owned(),
+			auth_url: "https://github.com/login/oauth/authorize".to_owned(),
+			token_url: "https://github.com/login/oauth/access_token".to_owned(),
+		};
 		html! {
 			<BrowserRouter>
-				{ <Route as route::Route>::switch() }
+				<OAuth2 {config} scopes={vec!["gist".to_owned()]}>
+					{ <Route as route::Route>::switch() }
+				</OAuth2>
 			</BrowserRouter>
 		}
 	}
