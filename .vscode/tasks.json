@@ -22,36 +22,37 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "3. Run",
-			"command": "cargo",
+			"label": "3. Serve",
+			"command": "trunk",
 			"args": [
-				"run"
+				"serve"
 			],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "4. Clean",
+			"label": "4. Generate Docs",
+			"command": "cargo",
+			"args": [
+				"doc", "--document-private-items"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "5. Open Docs",
+			"command": "${config:chrome_path}",
+			"args": [
+				"${workspaceFolder}/target/doc/wishlist/index.html"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "6. Clean",
 			"command": "cargo",
 			"args": [
 				"clean"
-			],
-			"group": "build",
-			"problemMatcher": []
-		},
-		{
-			"label": "5. Run Tests",
-			"command": "cargo",
-			"args": [
-				"test"
-			],
-			"problemMatcher": []
-		},
-		{
-			"label": "6. Release",
-			"command": "cargo",
-			"args": [
-				"build", "--release"
 			],
 			"group": "build",
 			"problemMatcher": []

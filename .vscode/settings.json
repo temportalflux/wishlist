@@ -4,5 +4,9 @@
 	"task.quickOpen.history": 0,
 	"explorer.sortOrder": "mixed",
 	"terminal.integrated.defaultProfile.windows": "Git Bash",
-	"editor.detectIndentation": false
+	"editor.detectIndentation": false,
+	"emmet.includeLanguages": {
+		"rust": "html",
+	},
+	"chrome_path": "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
 }
