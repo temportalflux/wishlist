@@ -1,134 +1,48 @@
-use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
-use yew::prelude::*;
-use yew_router::{BrowserRouter, Routable, Switch};
+use yew::{html, Component, Context, Html};
+use yew_router::{BrowserRouter, Routable};
 
-enum Action {
-	SignIn,
+pub mod api;
+pub mod index;
+pub mod route;
+
+#[derive(Debug, Clone, Copy, PartialEq, Routable)]
+pub enum Route {
+	#[at("api/*")]
+	Api,
+	#[not_found]
+	#[at("")]
+	Webpage,
 }
 
-struct Index {
-	token: bool,
+impl crate::route::Route for Route {
+	fn html(&self) -> Html {
+		match self {
+			Self::Api => <api::Route as route::Route>::switch(),
+			Self::Webpage => html! { <index::Page /> },
+		}
+	}
 }
 
-impl Component for Index {
-	type Message = Action;
+pub struct Root;
+impl Component for Root {
+	type Message = ();
 	type Properties = ();
 
 	fn create(_ctx: &Context<Self>) -> Self {
-		Self { token: false }
+		Self
 	}
 
 	#[allow(unused_parens)]
-	fn view(&self, ctx: &Context<Self>) -> Html {
-		let link = ctx.link();
-		let signin = link.callback(|_| Action::SignIn);
-
-		let account = match self.token {
-			true => html! {
-				<NavbarDropdown navlink={(html! {<>
-					<Image size={Some(ybc::ImageSize::Is32x32)}>
-						<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-					</Image>
-					{"Name"}
-				</>})}>
-					<NavbarItem href={"/logout"} tag={NavbarItemTag::A}>{"Logout"}</NavbarItem>
-				</NavbarDropdown>
-			},
-			false => html! {
-				<NavbarItem>
-					<Button classes={"is-primary is-dark"} onclick={signin}>{"Sign In"}</Button>
-				</NavbarItem>
-			},
-		};
-
-		html! {<>
-			<ybc::Navbar classes={"is-dark"}
-				navbrand={Some(html! {
-					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>
-						<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
-					</NavbarItem>
-				})}
-				navstart={Some(html! {<>
-					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
-					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
-				</>})}
-				navend={Some(html! {<>
-					{account}
-				</>})}
-			/>
+	fn view(&self, _ctx: &Context<Self>) -> Html {
+		html! {
 			<BrowserRouter>
-				<Switch<Route> render={Switch::render(Route::parse)} />
+				{ <Route as route::Route>::switch() }
 			</BrowserRouter>
-		</>}
-	}
-
-	fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-		match msg {
-			Action::SignIn => {
-				log::debug!("Sign In");
-				self.token = true;
-				true
-			}
-		}
-	}
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Routable)]
-enum Route {
-	#[at("/")]
-	Home,
-	#[at("/guide")]
-	UserGuide,
-	#[not_found]
-	#[at("/404")]
-	NotFound,
-}
-
-impl Route {
-	fn parse(route: &Route) -> Html {
-		match route {
-			Self::Home => html! {
-				<Container fluid=true>
-					<Tile>
-						<Tile vertical=true size={ybc::TileSize::Four}>
-							<Tile classes={"box"}>
-								<p>{"Lorem ipsum dolor sit amet ..."}</p>
-							</Tile>
-							/* .. snip .. more tiles here .. */
-						</Tile>
-					</Tile>
-				</Container>
-			},
-			Self::UserGuide => html! {
-				<Container fluid=true>
-					<Tile>
-						<Tile vertical=true size={ybc::TileSize::Four}>
-							<Tile classes={"box"}>
-								<p>{"This is the user guide, TBD"}</p>
-							</Tile>
-							/* .. snip .. more tiles here .. */
-						</Tile>
-					</Tile>
-				</Container>
-			},
-			Self::NotFound => html! {
-				<h1>{"404: Page not found"}</h1>
-			},
-		}
-	}
-}
-
-impl yew::html::IntoPropValue<Option<String>> for Route {
-	fn into_prop_value(self) -> Option<String> {
-		match self {
-			Self::Home => None,
-			Self::UserGuide => Some("guide".to_owned()),
-			Self::NotFound => Some("404".to_owned()),
 		}
 	}
 }
 
 fn main() {
 	wasm_logger::init(wasm_logger::Config::default());
-	yew::start_app::<Index>();
+	yew::start_app::<Root>();
 }
