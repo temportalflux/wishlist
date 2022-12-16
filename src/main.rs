@@ -49,8 +49,8 @@ impl Component for Index {
 					</NavbarItem>
 				})}
 				navstart={Some(html! {<>
-					<NavbarItem href={"/"} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
-					<NavbarItem href={"/guide"} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
+					<NavbarItem href={""} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
+					<NavbarItem href={"guide"} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 				</>})}
 				navend={Some(html! {<>
 					{account}
