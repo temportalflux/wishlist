@@ -1,4 +1,4 @@
-use ybc::{Button, Image, NavbarDropdown, NavbarItem, Container, Tile, NavbarItemTag};
+use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
 use yew_router::{BrowserRouter, Routable, Switch};
 
