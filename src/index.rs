@@ -2,6 +2,8 @@ use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, T
 use yew::prelude::*;
 use yew_router::{prelude::History, scope_ext::RouterScopeExt, Routable};
 
+use crate::components::AuthSwitch;
+
 pub struct Page;
 impl Component for Page {
 	type Message = ();
@@ -38,19 +40,25 @@ impl Component for Page {
 					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 				</>})}
 				navend={Some(html! {<>
-					<NavbarDropdown navlink={(html! {<>
-						<Image size={Some(ybc::ImageSize::Is32x32)}>
-							<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-						</Image>
-						{"Name"}
-					</>})}>
-						<NavbarItem>
-							<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
-						</NavbarItem>
-					</NavbarDropdown>
-					<NavbarItem>
-						<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
-					</NavbarItem>
+					<AuthSwitch
+						identified={(html! {
+							<NavbarDropdown navlink={(html! {<>
+								<Image size={Some(ybc::ImageSize::Is32x32)}>
+									<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
+								</Image>
+								{"Name"}
+							</>})}>
+								<NavbarItem>
+									<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
+								</NavbarItem>
+							</NavbarDropdown>
+						})}
+						anonymous={(html! {
+							<NavbarItem>
+								<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+							</NavbarItem>
+						})}
+					/>
 				</>})}
 			/>
 			{ <Route as crate::route::Route>::switch() }

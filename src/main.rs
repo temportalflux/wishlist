@@ -3,6 +3,7 @@ use yew::{html, Component, Context, Html};
 use yew_router::{BrowserRouter, Routable};
 
 pub mod api;
+pub mod components;
 pub mod config;
 pub mod index;
 pub mod route;
