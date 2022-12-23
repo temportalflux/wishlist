@@ -26,13 +26,13 @@ pub fn Page() -> Html {
 	html! {<>
 		<ybc::Navbar classes={"is-dark"}
 			navbrand={Some(html! {
-				<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>
+				<Link<Route> classes={"navbar-item"} to={Route::Home}>
 					<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
-				</NavbarItem>
+				</Link<Route>>
 			})}
 			navstart={Some(html! {<>
-				<NavbarItem><Link<Route> to={Route::Home}>{"Home"}</Link<Route>></NavbarItem>
-				<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
+				<Link<Route> classes={"navbar-item"} to={Route::Home}>{"Home"}</Link<Route>>
+				<Link<Route> classes={"navbar-item"} to={Route::UserGuide}>{"User Guide"}</Link<Route>>
 			</>})}
 			navend={Some(html! {<>
 				<AuthSwitch
