@@ -1,5 +1,6 @@
 use yew::{html, Component, Context, Html};
 use yew_router::{BrowserRouter, Routable};
+use crate::api::github::AccessToken;
 
 pub mod api;
 pub mod config;
@@ -17,9 +18,7 @@ pub enum Route {
 
 impl crate::route::Route for Route {
 	fn html(&self) -> Html {
-		use gloo_storage::Storage;
-		let token = gloo_storage::SessionStorage::get::<String>("access_token");
-		log::debug!("{token:?}");
+		log::debug!("{:?}", AccessToken::load());
 		match self {
 			Self::Api => <api::Route as route::Route>::switch(),
 			Self::Webpage => html! { <index::Page /> },

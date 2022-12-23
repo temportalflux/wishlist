@@ -1,5 +1,7 @@
 use yew::{html, Html};
-use yew_router::{Routable};
+use yew_router::Routable;
+use serde::Deserialize;
+use crate::api::github::AccessToken;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub enum Route {
@@ -24,7 +26,7 @@ impl crate::route::Route for Route {
 				};
 				let _ = gloo_utils::window().location().replace(auth_url.as_str());
 				html! {"logging in"}
-			},
+			}
 			Self::Logout => html! {
 				{"logout"}
 			},
@@ -56,7 +58,7 @@ impl crate::route::Route for Route {
 							log::error!("{err:?}");
 							return;
 						}
-					};	
+					};
 					let data: AccessTokenResponse = match response.json().await {
 						Ok(data) => data,
 						Err(err) => {
@@ -65,18 +67,15 @@ impl crate::route::Route for Route {
 						}
 					};
 
-					use gloo_storage::Storage;
-					let _ = gloo_storage::SessionStorage::set("access_token", data.access_token);
+					AccessToken::from(data.access_token).save();
 
 					let _ = gloo_utils::window().location().replace(&base_url);
 				});
 				html! {"exchanging auth token"}
-			},
+			}
 		}
 	}
 }
-
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct AccessTokenResponse {

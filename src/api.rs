@@ -2,6 +2,7 @@ use yew::Html;
 use yew_router::Routable;
 
 pub mod auth;
+pub mod github;
 
 #[derive(Debug, Clone, Copy, PartialEq, Routable)]
 pub enum Route {

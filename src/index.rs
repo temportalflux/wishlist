@@ -1,6 +1,6 @@
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
-use yew_router::{Routable, scope_ext::RouterScopeExt, prelude::History};
+use yew_router::{prelude::History, scope_ext::RouterScopeExt, Routable};
 
 pub struct Page;
 impl Component for Page {
