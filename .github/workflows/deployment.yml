@@ -9,18 +9,27 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: wasm32-unknown-unknown
-      - uses: jetli/trunk-action@v0.1.0
-      - uses: jetli/wasm-bindgen-action@v0.1.0
-      - uses: actions/checkout@v2
-      - name: Build Release
-        run: trunk build --release --public-url /${{ github.event.repository.name }}/
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+    - uses: jetli/trunk-action@v0.1.0
+    - uses: jetli/wasm-bindgen-action@v0.1.0
+    - uses: actions/checkout@v2
+    - name: Create secret files
+      shell: bash
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      run: |
+        mkdir env
+        echo "$CLIENT_ID" >> ./env/CLIENT_ID
+        echo "$CLIENT_SECRET" >> ./env/CLIENT_SECRET
+    - name: Build Release
+      run: trunk build --release --public-url /${{ github.event.repository.name }}/
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist
