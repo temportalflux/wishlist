@@ -13,13 +13,18 @@ impl Component for Page {
 
 	#[allow(unused_parens)]
 	fn view(&self, ctx: &Context<Self>) -> Html {
-		let history = ctx.link().history().unwrap();
-		let login = ctx.link().callback_once(move |_| {
-			history.push(crate::api::auth::Route::Login);
-		});
-		let logout = ctx.link().callback_once(|_| {
-			// STUB
-		});
+		let login = {
+			let history = ctx.link().history().unwrap();
+			ctx.link().callback_once(move |_| {
+				history.push(crate::api::auth::Route::Login);
+			})
+		};
+		let logout = {
+			let history = ctx.link().history().unwrap();
+			ctx.link().callback_once(move |_| {
+				history.push(crate::api::auth::Route::Logout);
+			})
+		};
 
 		html! {<>
 			<ybc::Navbar classes={"is-dark"}

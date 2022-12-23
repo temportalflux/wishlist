@@ -1,6 +1,7 @@
 use gloo_storage::{SessionStorage, Storage};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccessToken(String);
 impl From<String> for AccessToken {
 	fn from(value: String) -> Self {
@@ -13,11 +14,11 @@ impl AccessToken {
 	}
 
 	pub fn load() -> Option<Self> {
-		SessionStorage::get::<String>(Self::id()).ok().map(Self)
+		SessionStorage::get::<Self>(Self::id()).ok()
 	}
 
 	pub fn save(self) {
-		let _ = SessionStorage::set(Self::id(), self.0);
+		let _ = SessionStorage::set(Self::id(), self);
 	}
 
 	pub fn delete() {
