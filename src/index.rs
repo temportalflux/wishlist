@@ -1,6 +1,8 @@
+use std::{path::PathBuf, str::FromStr};
+
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
-use yew_router::{Routable, prelude::use_navigator};
+use yew_router::{Routable, prelude::{use_navigator, Link}};
 
 use crate::components::AuthSwitch;
 
@@ -29,7 +31,7 @@ pub fn Page() -> Html {
 				</NavbarItem>
 			})}
 			navstart={Some(html! {<>
-				<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
+				<NavbarItem><Link<Route> to={Route::Home}>{"Home"}</Link<Route>></NavbarItem>
 				<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 			</>})}
 			navend={Some(html! {<>
