@@ -1,6 +1,6 @@
 use crate::api::github::AccessToken;
-use yew::{html, Component, Context, Html};
-use yew_router::{BrowserRouter, Routable};
+use yew::{html, Html, function_component};
+use yew_router::{BrowserRouter, Routable, prelude::use_navigator};
 
 pub mod api;
 pub mod components;
@@ -10,15 +10,15 @@ pub mod route;
 
 #[derive(Debug, Clone, Copy, PartialEq, Routable)]
 pub enum Route {
-	#[at("api/*")]
+	#[at("/api/*")]
 	Api,
 	#[not_found]
-	#[at("")]
+	#[at("/")]
 	Webpage,
 }
 
 impl crate::route::Route for Route {
-	fn html(&self) -> Html {
+	fn html(self) -> Html {
 		log::debug!("access token: {:?}", AccessToken::load());
 		let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 		log::debug!("base_url: {base_url}");
@@ -30,26 +30,22 @@ impl crate::route::Route for Route {
 	}
 }
 
-pub struct Root;
-impl Component for Root {
-	type Message = ();
-	type Properties = ();
-
-	fn create(_ctx: &Context<Self>) -> Self {
-		Self
+#[function_component(Root)]
+fn root_comp() -> Html {
+	if let Some(nav) = use_navigator() {
+		log::debug!("nav basename: {:?}", nav.basename());
 	}
-
-	#[allow(unused_parens)]
-	fn view(&self, _ctx: &Context<Self>) -> Html {
-		html! {
-			<BrowserRouter>
-				{ <Route as route::Route>::switch() }
-			</BrowserRouter>
-		}
+	else {
+		log::debug!("no nav");
+	}
+	html! {
+		<BrowserRouter>
+			{ <Route as route::Route>::switch() }
+		</BrowserRouter>
 	}
 }
 
 fn main() {
 	wasm_logger::init(wasm_logger::Config::default());
-	yew::start_app::<Root>();
+	yew::Renderer::<Root>::new().render();
 }

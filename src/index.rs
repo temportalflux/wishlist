@@ -1,84 +1,76 @@
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
-use yew_router::{prelude::History, scope_ext::RouterScopeExt, Routable};
+use yew_router::{Routable, prelude::use_navigator};
 
 use crate::components::AuthSwitch;
 
-pub struct Page;
-impl Component for Page {
-	type Message = ();
-	type Properties = ();
+#[allow(unused_parens)]
+#[function_component]
+pub fn Page() -> Html {
+	let navigator = use_navigator().unwrap();
+	let login = {
+		let navigator = navigator.clone();
+		Callback::from(move |_| {
+			navigator.push(&crate::api::auth::Route::Login);
+		})
+	};
+	let logout = {
+		let navigator = navigator.clone();
+		Callback::from(move |_| {
+			navigator.push(&crate::api::auth::Route::Logout);
+		})
+	};
 
-	fn create(_ctx: &Context<Self>) -> Self {
-		Self
-	}
-
-	#[allow(unused_parens)]
-	fn view(&self, ctx: &Context<Self>) -> Html {
-		let login = {
-			let history = ctx.link().history().unwrap();
-			ctx.link().callback_once(move |_| {
-				history.push(crate::api::auth::Route::Login);
-			})
-		};
-		let logout = {
-			let history = ctx.link().history().unwrap();
-			ctx.link().callback_once(move |_| {
-				history.push(crate::api::auth::Route::Logout);
-			})
-		};
-
-		html! {<>
-			<ybc::Navbar classes={"is-dark"}
-				navbrand={Some(html! {
-					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>
-						<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
-					</NavbarItem>
-				})}
-				navstart={Some(html! {<>
-					<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
-					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
-				</>})}
-				navend={Some(html! {<>
-					<AuthSwitch
-						identified={(html! {
-							<NavbarDropdown navlink={(html! {<>
-								<Image size={Some(ybc::ImageSize::Is32x32)}>
-									<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-								</Image>
-								{"Name"}
-							</>})}>
-								<NavbarItem>
-									<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
-								</NavbarItem>
-							</NavbarDropdown>
-						})}
-						anonymous={(html! {
+	html! {<>
+		<ybc::Navbar classes={"is-dark"}
+			navbrand={Some(html! {
+				<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>
+					<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
+				</NavbarItem>
+			})}
+			navstart={Some(html! {<>
+				<NavbarItem href={Route::Home} tag={NavbarItemTag::A}>{"Home"}</NavbarItem>
+				<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
+			</>})}
+			navend={Some(html! {<>
+				<AuthSwitch
+					identified={(html! {
+						<NavbarDropdown navlink={(html! {<>
+							<Image size={Some(ybc::ImageSize::Is32x32)}>
+								<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
+							</Image>
+							{"Name"}
+						</>})}>
 							<NavbarItem>
-								<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+								<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
 							</NavbarItem>
-						})}
-					/>
-				</>})}
-			/>
-			{ <Route as crate::route::Route>::switch() }
-		</>}
-	}
+						</NavbarDropdown>
+					})}
+					anonymous={(html! {
+						<NavbarItem>
+							<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+						</NavbarItem>
+					})}
+				/>
+			</>})}
+		/>
+		{ <Route as crate::route::Route>::switch() }
+	</>}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Routable)]
 enum Route {
-	#[at("")]
+	#[at("/")]
 	Home,
-	#[at("guide")]
+	#[at("/guide")]
 	UserGuide,
 	#[not_found]
-	#[at("404")]
+	#[at("/404")]
 	NotFound,
 }
 
 impl crate::route::Route for Route {
-	fn html(&self) -> Html {
+	fn html(self) -> Html {
 		match self {
 			Self::Home => html! {
 				<Container fluid=true>

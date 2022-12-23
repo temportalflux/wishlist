@@ -15,13 +15,13 @@ where
 
 	fn view(&self, _ctx: &Context<Self>) -> Html {
 		html! {
-			<yew_router::Switch<T> render={yew_router::Switch::render(T::html)} />
+			<yew_router::Switch<T> render={T::html} />
 		}
 	}
 }
 
 pub trait Route {
-	fn html(&self) -> Html;
+	fn html(self) -> Html;
 
 	fn switch() -> Html
 	where

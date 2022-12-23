@@ -7,16 +7,16 @@ use yew_router::Routable;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub enum Route {
-	#[at("api/auth/login")]
+	#[at("/api/auth/login")]
 	Login,
-	#[at("api/auth/logout")]
+	#[at("/api/auth/logout")]
 	Logout,
-	#[at("api/auth/login_token")]
+	#[at("/api/auth/login_token")]
 	TokenExchange,
 }
 
 impl crate::route::Route for Route {
-	fn html(&self) -> Html {
+	fn html(self) -> Html {
 		let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 		let message = match self {
 			Self::Login => {
