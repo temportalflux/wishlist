@@ -1,8 +1,8 @@
 use yew::{html, Component, Context, Html};
-use yew_oauth2::oauth2::OAuth2;
 use yew_router::{BrowserRouter, Routable};
 
 pub mod api;
+pub mod config;
 pub mod index;
 pub mod route;
 
@@ -17,6 +17,9 @@ pub enum Route {
 
 impl crate::route::Route for Route {
 	fn html(&self) -> Html {
+		use gloo_storage::Storage;
+		let token = gloo_storage::SessionStorage::get::<String>("access_token");
+		log::debug!("{token:?}");
 		match self {
 			Self::Api => <api::Route as route::Route>::switch(),
 			Self::Webpage => html! { <index::Page /> },
@@ -35,16 +38,9 @@ impl Component for Root {
 
 	#[allow(unused_parens)]
 	fn view(&self, _ctx: &Context<Self>) -> Html {
-		let config = yew_oauth2::oauth2::Config {
-			client_id: "479587a8a2c453a44643".to_owned(),
-			auth_url: "https://github.com/login/oauth/authorize".to_owned(),
-			token_url: "https://github.com/login/oauth/access_token".to_owned(),
-		};
 		html! {
 			<BrowserRouter>
-				<OAuth2 {config} scopes={vec!["gist".to_owned()]}>
-					{ <Route as route::Route>::switch() }
-				</OAuth2>
+				{ <Route as route::Route>::switch() }
 			</BrowserRouter>
 		}
 	}

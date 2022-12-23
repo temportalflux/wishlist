@@ -1,10 +1,6 @@
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
 use yew::prelude::*;
-use yew_oauth2::{
-	oauth2::Client,
-	prelude::{Authenticated, NotAuthenticated, OAuth2Dispatcher, OAuth2Operations},
-};
-use yew_router::Routable;
+use yew_router::{Routable, scope_ext::RouterScopeExt, prelude::History};
 
 pub struct Page;
 impl Component for Page {
@@ -17,11 +13,12 @@ impl Component for Page {
 
 	#[allow(unused_parens)]
 	fn view(&self, ctx: &Context<Self>) -> Html {
-		let login = ctx.link().callback_once(|_| {
-			OAuth2Dispatcher::<Client>::new().start_login();
+		let history = ctx.link().history().unwrap();
+		let login = ctx.link().callback_once(move |_| {
+			history.push(crate::api::auth::Route::Login);
 		});
 		let logout = ctx.link().callback_once(|_| {
-			OAuth2Dispatcher::<Client>::new().logout();
+			// STUB
 		});
 
 		html! {<>
@@ -36,23 +33,19 @@ impl Component for Page {
 					<NavbarItem href={Route::UserGuide} tag={NavbarItemTag::A}>{"User Guide"}</NavbarItem>
 				</>})}
 				navend={Some(html! {<>
-					<Authenticated>
-						<NavbarDropdown navlink={(html! {<>
-							<Image size={Some(ybc::ImageSize::Is32x32)}>
-								<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-							</Image>
-							{"Name"}
-						</>})}>
-							<NavbarItem>
-								<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
-							</NavbarItem>
-						</NavbarDropdown>
-					</Authenticated>
-					<NotAuthenticated>
+					<NavbarDropdown navlink={(html! {<>
+						<Image size={Some(ybc::ImageSize::Is32x32)}>
+							<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
+						</Image>
+						{"Name"}
+					</>})}>
 						<NavbarItem>
-							<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+							<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
 						</NavbarItem>
-					</NotAuthenticated>
+					</NavbarDropdown>
+					<NavbarItem>
+						<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+					</NavbarItem>
 				</>})}
 			/>
 			{ <Route as crate::route::Route>::switch() }
