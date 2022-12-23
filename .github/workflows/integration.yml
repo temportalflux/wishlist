@@ -5,14 +5,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Create secret files
       shell: bash
       env:
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       run: |
+        cd $GITHUB_WORKSPACE
         mkdir env
         echo "$CLIENT_ID" >> ./env/CLIENT_ID
         echo "$CLIENT_SECRET" >> ./env/CLIENT_SECRET
-    - uses: actions/checkout@v2
     - run: cargo test --all

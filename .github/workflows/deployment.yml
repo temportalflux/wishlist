@@ -22,6 +22,7 @@ jobs:
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       run: |
+        cd $GITHUB_WORKSPACE
         mkdir env
         echo "$CLIENT_ID" >> ./env/CLIENT_ID
         echo "$CLIENT_SECRET" >> ./env/CLIENT_SECRET
