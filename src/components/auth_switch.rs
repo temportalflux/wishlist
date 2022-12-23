@@ -1,8 +1,5 @@
-use yew::{
-	prelude::*,
-	Component, Properties,
-};
 use crate::api::github::AccessToken;
+use yew::{prelude::*, Component, Properties};
 
 #[derive(Debug, Clone, PartialEq, Properties)]
 pub struct AuthSwitchProps {

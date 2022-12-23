@@ -1,5 +1,6 @@
 use crate::api::github::AccessToken;
 use serde::Deserialize;
+use std::collections::HashMap;
 use ybc::{Container, Title};
 use yew::{html, Html};
 use yew_router::Routable;
@@ -17,22 +18,27 @@ pub enum Route {
 impl crate::route::Route for Route {
 	fn html(&self) -> Html {
 		let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
-		match self {
+		let message = match self {
 			Self::Login => {
 				let auth_url = {
-					let mut url = "https://github.com/login/oauth/authorize".to_string();
-					url += &format!("?client_id={}", crate::config::CLIENT_ID);
-					url += "&scope=gist";
-					url += "&redirect_uri=http://localhost:8080/api/auth/login_token";
-					url
+					let mut params = HashMap::new();
+					params.insert("client_id", crate::config::CLIENT_ID.to_string());
+					params.insert("scope", "gist".to_string());
+					params.insert("redirect_uri", format!("{base_url}api/auth/login_token"));
+					let params = params
+						.into_iter()
+						.map(|(k, v)| format!("{k}={v}"))
+						.collect::<Vec<_>>()
+						.join("&");
+					format!("https://github.com/login/oauth/authorize?{params}")
 				};
 				let _ = gloo_utils::window().location().replace(auth_url.as_str());
-				html! {"logging in"}
+				"Requesting Authentication Handshake"
 			}
 			Self::Logout => {
 				AccessToken::delete();
 				let _ = gloo_utils::window().location().replace(&base_url);
-				html! {"logging out"}
+				"Logging Out"
 			}
 			Self::TokenExchange => {
 				let params_str = gloo_utils::window().location().search().unwrap();
@@ -92,13 +98,14 @@ impl crate::route::Route for Route {
 
 					let _ = gloo_utils::window().location().replace(&base_url);
 				});
-				html! {
-					<Container>
-						<Title>{"Establishing Authentication Handshake"}</Title>
-						<progress class={"progress is-large is-info"}></progress>
-					</Container>
-				}
+				"Establishing Authentication Handshake"
 			}
+		};
+		html! {
+			<Container>
+				<Title>{message}</Title>
+				<progress class={"progress is-large is-info"}></progress>
+			</Container>
 		}
 	}
 }
