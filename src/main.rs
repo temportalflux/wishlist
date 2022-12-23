@@ -22,6 +22,7 @@ impl crate::route::Route for Route {
 		log::debug!("access token: {:?}", AccessToken::load());
 		let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 		log::debug!("base_url: {base_url}");
+		log::debug!("path: {:?}", gloo_utils::window().location().pathname().ok());
 		match self {
 			Self::Api => <api::Route as route::Route>::switch(),
 			Self::Webpage => html! { <index::Page /> },
