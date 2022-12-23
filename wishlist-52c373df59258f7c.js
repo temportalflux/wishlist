@@ -305,6 +305,10 @@ function getImports() {
     imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
         takeObject(arg0);
     };
+    imports.wbg.__wbindgen_object_clone_ref = function(arg0) {
+        const ret = getObject(arg0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbindgen_cb_drop = function(arg0) {
         const obj = takeObject(arg0).original;
         if (obj.cnt-- == 1) {
@@ -313,10 +317,6 @@ function getImports() {
         }
         const ret = false;
         return ret;
-    };
-    imports.wbg.__wbindgen_object_clone_ref = function(arg0) {
-        const ret = getObject(arg0);
-        return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_string_get = function(arg0, arg1) {
         const obj = getObject(arg1);
@@ -962,15 +962,15 @@ function getImports() {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1643 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1642 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 876, __wbg_adapter_34);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper2041 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2040 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1006, __wbg_adapter_37);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper2105 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2104 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1035, __wbg_adapter_40);
         return addHeapObject(ret);
     };
@@ -1010,7 +1010,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('wishlist-ccdc769607c03919_bg.wasm', import.meta.url);
+        input = new URL('wishlist-52c373df59258f7c_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
