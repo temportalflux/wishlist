@@ -41,11 +41,11 @@ impl crate::route::Route for Route {
 				let _ = gloo_utils::window().location().replace(&base_url);
 			}
 			(Self::TokenExchange, Some(AuthStatus::Authorizing)) => {
+				AuthStatus::ExchangingTokens.apply_to_session();
 				let params_str = gloo_utils::window().location().search().unwrap();
 				let params = web_sys::UrlSearchParams::new_with_str(&params_str).unwrap();
 				let code = params.get("code").unwrap();
 				wasm_bindgen_futures::spawn_local(async move {
-					AuthStatus::ExchangingTokens.apply_to_session();
 					/* Github OAuth & CORS issue
 					- Explanation: https://stackoverflow.com/questions/42150075/cors-issue-on-github-oauth
 					- Reverse Proxy: https://stackoverflow.com/questions/29670703/how-to-use-cors-anywhere-to-reverse-proxy-and-add-cors-headers/32167044#32167044
