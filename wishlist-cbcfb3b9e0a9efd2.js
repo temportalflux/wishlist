@@ -962,16 +962,16 @@ function getImports() {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1642 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 876, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper1776 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 968, __wbg_adapter_34);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper2040 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1006, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper2177 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1098, __wbg_adapter_37);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper2104 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1035, __wbg_adapter_40);
+    imports.wbg.__wbindgen_closure_wrapper2241 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1126, __wbg_adapter_40);
         return addHeapObject(ret);
     };
 
@@ -1010,7 +1010,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('wishlist-52c373df59258f7c_bg.wasm', import.meta.url);
+        input = new URL('wishlist-cbcfb3b9e0a9efd2_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
