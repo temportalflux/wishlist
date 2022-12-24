@@ -88,8 +88,8 @@ impl crate::route::Route for Route {
 					};
 					let data: AccessTokenResponse = match serde_json::from_str(&response_text) {
 						Ok(data) => data,
-						Err(err) => {
-							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
+						Err(_) => {
+							AuthStatus::Failed(format!("Not an access token: {response_text:?}")).apply_to_session();
 							return;
 						}
 					};
