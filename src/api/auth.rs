@@ -1,7 +1,6 @@
-use crate::api::github::AccessToken;
+use crate::api::github::AuthStatus;
 use serde::Deserialize;
 use std::collections::HashMap;
-use ybc::{Container, Title};
 use yew::{html, Html};
 use yew_router::Routable;
 
@@ -18,8 +17,9 @@ pub enum Route {
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
 		let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
-		let message = match self {
-			Self::Login => {
+		match (self, AuthStatus::load()) {
+			(Self::Login, None) => {
+				AuthStatus::Authorizing.apply_to_session();
 				let auth_url = {
 					let mut params = HashMap::new();
 					params.insert("client_id", crate::config::CLIENT_ID.to_string());
@@ -32,20 +32,20 @@ impl crate::route::Route for Route {
 						.join("&");
 					format!("https://github.com/login/oauth/authorize?{params}")
 				};
-				let _ = gloo_utils::window().location().replace(auth_url.as_str());
-				"Requesting Authentication Handshake"
+				if let Err(err) = gloo_utils::window().location().replace(auth_url.as_str()) {
+					AuthStatus::Failed(format!("{err:?}")).apply_to_session();
+				}
 			}
-			Self::Logout => {
-				AccessToken::delete();
+			(Self::Logout, Some(_)) => {
+				AuthStatus::delete();
 				let _ = gloo_utils::window().location().replace(&base_url);
-				"Logging Out"
 			}
-			Self::TokenExchange => {
+			(Self::TokenExchange, Some(AuthStatus::Authorizing)) => {
 				let params_str = gloo_utils::window().location().search().unwrap();
 				let params = web_sys::UrlSearchParams::new_with_str(&params_str).unwrap();
 				let code = params.get("code").unwrap();
-
 				wasm_bindgen_futures::spawn_local(async move {
+					AuthStatus::ExchangingTokens.apply_to_session();
 					/* Github OAuth & CORS issue
 					- Explanation: https://stackoverflow.com/questions/42150075/cors-issue-on-github-oauth
 					- Reverse Proxy: https://stackoverflow.com/questions/29670703/how-to-use-cors-anywhere-to-reverse-proxy-and-add-cors-headers/32167044#32167044
@@ -75,37 +75,34 @@ impl crate::route::Route for Route {
 					let response = match res {
 						Ok(resp) => resp,
 						Err(err) => {
-							log::error!("{err:?}");
+							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
 							return;
 						}
 					};
 					let response_text = match response.text().await {
 						Ok(data) => data,
 						Err(err) => {
-							log::error!("{err:?}");
+							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
 							return;
 						}
 					};
 					let data: AccessTokenResponse = match serde_json::from_str(&response_text) {
 						Ok(data) => data,
 						Err(err) => {
-							log::error!("{err:?}");
+							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
 							return;
 						}
 					};
 
-					AccessToken::from(data.access_token).save();
+					AuthStatus::Successful(data.access_token).apply_to_session();
 
 					let _ = gloo_utils::window().location().replace(&base_url);
 				});
-				"Establishing Authentication Handshake"
 			}
-		};
+			_ => {}
+		}
 		html! {
-			<Container>
-				<Title>{message}</Title>
-				<progress class={"progress is-large is-info"}></progress>
-			</Container>
+			<crate::index::Page />
 		}
 	}
 }

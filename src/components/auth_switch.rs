@@ -1,4 +1,4 @@
-use crate::api::github::AccessToken;
+use crate::api::github::AuthStatus;
 use yew::{prelude::*, Component, Properties};
 
 #[derive(Debug, Clone, PartialEq, Properties)]
@@ -20,9 +20,9 @@ impl Component for AuthSwitch {
 
 	fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
 		let empty = || html! {};
-		match AccessToken::load().is_some() {
-			true => ctx.props().identified.clone().unwrap_or_else(empty),
-			false => ctx.props().anonymous.clone().unwrap_or_else(empty),
+		match AuthStatus::load() {
+			Some(AuthStatus::Successful(_)) => ctx.props().identified.clone().unwrap_or_else(empty),
+			_ => ctx.props().anonymous.clone().unwrap_or_else(empty),
 		}
 	}
 }

@@ -1,10 +1,10 @@
-use std::{path::PathBuf, str::FromStr};
-
-use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, NavbarItemTag, Tile};
-use yew::prelude::*;
-use yew_router::{Routable, prelude::{use_navigator, Link}};
-
 use crate::components::AuthSwitch;
+use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, Tile};
+use yew::prelude::*;
+use yew_router::{
+	prelude::{use_navigator, Link},
+	Routable,
+};
 
 #[allow(unused_parens)]
 #[function_component]
