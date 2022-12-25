@@ -94,16 +94,13 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 	- cors.sh blog post: https://blog.grida.co/cors-anywhere-for-everyone-free-reliable-cors-proxy-service-73507192714e
 	- [https://cors.sh/]
 	*/
-	let client = reqwest::Client::new();
-	let response = client
+	let mut payload = std::collections::HashMap::new();
+	payload.insert("client_id", crate::config::CLIENT_ID);
+	payload.insert("client_secret", crate::config::CLIENT_SECRET);
+	payload.insert("code", &code);
+	let builder = reqwest::Client::new()
 		.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
-		.json(&{
-			let mut data = std::collections::HashMap::new();
-			data.insert("client_id", crate::config::CLIENT_ID);
-			data.insert("client_secret", crate::config::CLIENT_SECRET);
-			data.insert("code", &code);
-			data
-		})
+		.json(&payload)
 		.headers({
 			let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 			let mut header = reqwest::header::HeaderMap::new();
@@ -111,9 +108,9 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 			header.insert("Accept", "application/json".parse().unwrap());
 			header.insert("Content-Type", "application/json".parse().unwrap());
 			header
-		})
-		.send()
-		.await?;
+		});
+	log::debug!("Request: {:?}, Payload: {:?}", builder, payload);
+	let response = builder.send().await?;
 	let text = response.text().await?;
 	let data: AccessTokenResponse = match serde_json::from_str(&text) {
 		Ok(data) => data,
