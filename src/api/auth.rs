@@ -23,7 +23,7 @@ impl crate::route::Route for Route {
 				AuthStatus::Authorizing.apply_to_session();
 				let auth_url = {
 					let mut params = HashMap::new();
-					params.insert("client_id", crate::config::CLIENT_ID.to_string());
+					params.insert("client_id", crate::config::CLIENT_ID.trim().to_string());
 					params.insert("scope", "gist".to_string());
 					params.insert("redirect_uri", format!("{base_url}api/auth/login_token"));
 					let params = params
@@ -95,8 +95,8 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 	- [https://cors.sh/]
 	*/
 	let mut payload = std::collections::HashMap::new();
-	payload.insert("client_id", crate::config::CLIENT_ID);
-	payload.insert("client_secret", crate::config::CLIENT_SECRET);
+	payload.insert("client_id", crate::config::CLIENT_ID.trim());
+	payload.insert("client_secret", crate::config::CLIENT_SECRET.trim());
 	payload.insert("code", &code);
 	let builder = reqwest::Client::new()
 		.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
