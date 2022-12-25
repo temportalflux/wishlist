@@ -105,8 +105,9 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 			data
 		})
 		.headers({
+			let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 			let mut header = reqwest::header::HeaderMap::new();
-			header.insert("origin", "https://localhost:8080".parse().unwrap());
+			header.insert("origin", base_url.parse().unwrap());
 			header.insert("Accept", "application/json".parse().unwrap());
 			header.insert("Content-Type", "application/json".parse().unwrap());
 			header
