@@ -1,3 +1,4 @@
+use super::github::InvalidJson;
 use crate::api::github::AuthStatus;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -46,57 +47,35 @@ impl crate::route::Route for Route {
 				let params = web_sys::UrlSearchParams::new_with_str(&params_str).unwrap();
 				let code = params.get("code").unwrap();
 				wasm_bindgen_futures::spawn_local(async move {
-					/* Github OAuth & CORS issue
-					- Explanation: https://stackoverflow.com/questions/42150075/cors-issue-on-github-oauth
-					- Reverse Proxy: https://stackoverflow.com/questions/29670703/how-to-use-cors-anywhere-to-reverse-proxy-and-add-cors-headers/32167044#32167044
-					- Cors-Anywhere Deprecation: https://github.com/Rob--W/cors-anywhere/issues/301
-					- cors.sh blog post: https://blog.grida.co/cors-anywhere-for-everyone-free-reliable-cors-proxy-service-73507192714e
-					- [https://cors.sh/]
-					*/
-					let client = reqwest::Client::new();
-					let res = client
-						.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
-						.json(&{
-							let mut data = std::collections::HashMap::new();
-							data.insert("client_id", crate::config::CLIENT_ID);
-							data.insert("client_secret", crate::config::CLIENT_SECRET);
-							data.insert("code", &code);
-							data
-						})
-						.headers({
-							let mut header = reqwest::header::HeaderMap::new();
-							header.insert("origin", "https://localhost:8080".parse().unwrap());
-							header.insert("Accept", "application/json".parse().unwrap());
-							header.insert("Content-Type", "application/json".parse().unwrap());
-							header
-						})
-						.send()
-						.await;
-					let response = match res {
-						Ok(resp) => resp,
-						Err(err) => {
-							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
-							return;
+					static MAX_ATTEMPTS: usize = 5;
+					let mut attempt = 0;
+					'attempt_exchange: while attempt < MAX_ATTEMPTS {
+						match exchange_tokens(&code).await {
+							Ok(token) => {
+								AuthStatus::Successful(token).apply_to_session();
+								break 'attempt_exchange;
+							}
+							Err(err) => {
+								AuthStatus::Failed(format!("{err:?}")).apply_to_session();
+								attempt += 1;
+							}
 						}
-					};
-					let response_text = match response.text().await {
-						Ok(data) => data,
-						Err(err) => {
-							AuthStatus::Failed(format!("{err:?}")).apply_to_session();
-							return;
-						}
-					};
-					let data: AccessTokenResponse = match serde_json::from_str(&response_text) {
-						Ok(data) => data,
-						Err(_) => {
-							AuthStatus::Failed(format!("Not an access token: {response_text:?}")).apply_to_session();
-							return;
-						}
-					};
+					}
+					match AuthStatus::load() {
+						Some(AuthStatus::Successful(_)) => {}
+						_ => return,
+					}
 
-					AuthStatus::Successful(data.access_token).apply_to_session();
+					match super::github::CurrentUser::get().await {
+						Ok(user) => {
+							log::debug!("{user:?}");
+						}
+						Err(err) => {
+							log::error!("Failed to fetch current user {err:?}");
+						}
+					}
 
-					let _ = gloo_utils::window().location().replace(&base_url);
+					//let _ = gloo_utils::window().location().replace(&base_url);
 				});
 			}
 			_ => {}
@@ -105,6 +84,43 @@ impl crate::route::Route for Route {
 			<crate::index::Page />
 		}
 	}
+}
+
+async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
+	/* Github OAuth & CORS issue
+	- Explanation: https://stackoverflow.com/questions/42150075/cors-issue-on-github-oauth
+	- Reverse Proxy: https://stackoverflow.com/questions/29670703/how-to-use-cors-anywhere-to-reverse-proxy-and-add-cors-headers/32167044#32167044
+	- Cors-Anywhere Deprecation: https://github.com/Rob--W/cors-anywhere/issues/301
+	- cors.sh blog post: https://blog.grida.co/cors-anywhere-for-everyone-free-reliable-cors-proxy-service-73507192714e
+	- [https://cors.sh/]
+	*/
+	let client = reqwest::Client::new();
+	let response = client
+		.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
+		.json(&{
+			let mut data = std::collections::HashMap::new();
+			data.insert("client_id", crate::config::CLIENT_ID);
+			data.insert("client_secret", crate::config::CLIENT_SECRET);
+			data.insert("code", &code);
+			data
+		})
+		.headers({
+			let mut header = reqwest::header::HeaderMap::new();
+			header.insert("origin", "https://localhost:8080".parse().unwrap());
+			header.insert("Accept", "application/json".parse().unwrap());
+			header.insert("Content-Type", "application/json".parse().unwrap());
+			header
+		})
+		.send()
+		.await?;
+	let text = response.text().await?;
+	let data: AccessTokenResponse = match serde_json::from_str(&text) {
+		Ok(data) => data,
+		Err(err) => {
+			return Err(InvalidJson(text, err))?;
+		}
+	};
+	Ok(data.access_token)
 }
 
 #[derive(Deserialize)]
