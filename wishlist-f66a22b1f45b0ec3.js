@@ -1010,7 +1010,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('wishlist-de42f097839a9aa6_bg.wasm', import.meta.url);
+        input = new URL('wishlist-f66a22b1f45b0ec3_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
