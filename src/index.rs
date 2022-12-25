@@ -1,5 +1,5 @@
-use crate::components::{AuthSwitch, user};
-use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, Tile};
+use crate::components::{user, AuthSwitch};
+use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
 use yew_router::{
 	prelude::{use_navigator, Link},

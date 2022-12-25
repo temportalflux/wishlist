@@ -1,6 +1,6 @@
-use ybc::{Image, Block};
+use crate::api::github::{SessionValue, User};
+use ybc::{Block, Image};
 use yew::prelude::*;
-use crate::api::github::{User, SessionValue};
 
 #[function_component]
 pub fn Identification() -> Html {
