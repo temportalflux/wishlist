@@ -1,5 +1,7 @@
-use super::github::{InvalidJson, Session};
-use crate::api::github::{AuthStatus, SessionValue};
+use crate::{
+	response::InvalidJson,
+	session::{AuthStatus, Session, SessionValue}, api::github::gist,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use yew::{html, Html};
@@ -47,7 +49,7 @@ impl crate::route::Route for Route {
 				let params = web_sys::UrlSearchParams::new_with_str(&params_str).unwrap();
 				let code = params.get("code").unwrap();
 				wasm_bindgen_futures::spawn_local(async move {
-					static MAX_ATTEMPTS: usize = 5;
+					static MAX_ATTEMPTS: usize = 2;
 					let mut attempt = 0;
 					'attempt_exchange: while attempt < MAX_ATTEMPTS {
 						match exchange_tokens(&code).await {
@@ -75,14 +77,17 @@ impl crate::route::Route for Route {
 						}
 					}
 
-					let _ = gloo_utils::window().location().replace(&base_url);
+					let result = gist::find_gist().await;
+					log::debug!("{result:?}");
+
+					//let _ = gloo_utils::window().location().replace(&base_url);
 				});
 			}
 			_ => {}
 		}
 		log::debug!("render auth page");
 		html! {
-			<crate::index::Page />
+			<crate::page::Page />
 		}
 	}
 }
@@ -113,7 +118,7 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 			header.insert("Content-Type", "application/json".parse().unwrap());
 			header
 		});
-	//log::debug!("Request: {:?}, Payload: {:?}", builder, payload);
+	log::debug!("Request: {:?}, Payload: {:?}", builder, payload);
 	let response = builder.send().await?;
 	let text = response.text().await?;
 	let data: AccessTokenResponse = match serde_json::from_str(&text) {

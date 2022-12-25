@@ -1,12 +1,13 @@
-use api::github::Session;
 use yew::{function_component, html, Callback, Classes, Html};
 use yew_router::{prelude::use_navigator, BrowserRouter, Routable};
 
 pub mod api;
 pub mod components;
 pub mod config;
-pub mod index;
+pub mod page;
+pub mod response;
 pub mod route;
+pub mod session;
 
 #[derive(Debug, Clone, Copy, PartialEq, Routable)]
 pub enum Route {
@@ -19,10 +20,10 @@ pub enum Route {
 
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
-		log::debug!("session: {:?}", api::github::Session::get());
+		log::debug!("session: {:?}", session::Session::get());
 		match self {
 			Self::Api => <api::Route as route::Route>::switch(),
-			Self::Webpage => html! { <index::Page /> },
+			Self::Webpage => html! { <page::Page /> },
 		}
 	}
 }
@@ -51,13 +52,13 @@ fn AuthModal() -> Html {
 	let mut close_button = html! {};
 	let refresh_modal = yew::use_force_update();
 	let close_modal = Callback::from(move |_| {
-		Session::delete();
+		session::Session::delete();
 		refresh_modal.force_update();
 	});
-	if let Session {
+	if let session::Session {
 		status: Some(status),
 		..
-	} = Session::get()
+	} = session::Session::get()
 	{
 		if status.should_show_modal() {
 			classes.push("is-active");

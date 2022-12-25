@@ -1,4 +1,4 @@
-use crate::api::github::{SessionValue, User};
+use crate::session::{SessionValue, User};
 use ybc::{Block, Image};
 use yew::prelude::*;
 
