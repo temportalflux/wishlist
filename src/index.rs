@@ -1,4 +1,4 @@
-use crate::components::AuthSwitch;
+use crate::components::{AuthSwitch, user};
 use ybc::{Button, Container, Image, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
 use yew_router::{
@@ -38,10 +38,7 @@ pub fn Page() -> Html {
 				<AuthSwitch
 					identified={(html! {
 						<NavbarDropdown navlink={(html! {<>
-							<Image size={Some(ybc::ImageSize::Is32x32)}>
-								<img class="is-rounded" src="https://bulma.io/images/placeholders/32x32.png" />
-							</Image>
-							{"Name"}
+							<user::Identification />
 						</>})}>
 							<NavbarItem>
 								<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>

@@ -2,6 +2,47 @@ use gloo_storage::{SessionStorage, Storage};
 use reqwest::RequestBuilder;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+#[derive(Debug)]
+pub struct Session {
+	pub status: Option<AuthStatus>,
+	pub user: Option<User>,
+}
+impl Session {
+	pub fn get() -> Self {
+		Self {
+			status: AuthStatus::load(),
+			user: User::load(),
+		}
+	}
+
+	pub fn delete() {
+		AuthStatus::delete();
+		User::delete();
+	}
+}
+
+pub trait SessionValue {
+	fn id() -> &'static str;
+
+	fn load() -> Option<Self>
+	where
+		Self: for<'de> Deserialize<'de>,
+	{
+		SessionStorage::get::<Self>(Self::id()).ok()
+	}
+
+	fn apply_to_session(self)
+	where
+		Self: Sized + Serialize,
+	{
+		let _ = SessionStorage::set(Self::id(), self);
+	}
+
+	fn delete() {
+		SessionStorage::delete(Self::id());
+	}
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AuthStatus {
 	Authorizing,
@@ -9,23 +50,12 @@ pub enum AuthStatus {
 	Successful(String),
 	Failed(String),
 }
-impl AuthStatus {
+impl SessionValue for AuthStatus {
 	fn id() -> &'static str {
 		"auth_status"
 	}
-
-	pub fn load() -> Option<Self> {
-		SessionStorage::get::<Self>(Self::id()).ok()
-	}
-
-	pub fn apply_to_session(self) {
-		let _ = SessionStorage::set(Self::id(), self);
-	}
-
-	pub fn delete() {
-		SessionStorage::delete(Self::id());
-	}
-
+}
+impl AuthStatus {
 	pub fn should_show_modal(&self) -> bool {
 		match self {
 			Self::Authorizing | Self::ExchangingTokens => true,
@@ -55,6 +85,18 @@ impl AuthStatus {
 			Self::Failed(error) => Some(error.clone()),
 			_ => None,
 		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+	pub name: String,
+	pub login: String,
+	pub image_url: String,
+}
+impl SessionValue for User {
+	fn id() -> &'static str {
+		"user"
 	}
 }
 
@@ -118,9 +160,9 @@ impl std::fmt::Display for InvalidJson {
 	}
 }
 
-pub struct CurrentUser;
-impl CurrentUser {
-	pub async fn get() -> anyhow::Result<String> {
+pub struct FetchCurrentUser;
+impl FetchCurrentUser {
+	pub async fn get() -> anyhow::Result<User> {
 		#[derive(Deserialize)]
 		struct Response {
 			data: Data,
@@ -132,10 +174,17 @@ impl CurrentUser {
 		#[derive(Deserialize)]
 		struct Viewer {
 			login: String,
+			name: String,
+			#[serde(rename = "avatarUrl")]
+			image_url: String,
 		}
-		let resp = Query::new::<Response>("query { viewer { login } }")
+		let resp = Query::new::<Response>("query { viewer { login name avatarUrl } }")
 			.send()
 			.await?;
-		Ok(resp.data.viewer.login)
+		Ok(User {
+			name: resp.data.viewer.name,
+			login: resp.data.viewer.login,
+			image_url: resp.data.viewer.image_url,
+		})
 	}
 }

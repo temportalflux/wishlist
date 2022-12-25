@@ -1,5 +1,5 @@
-use super::github::InvalidJson;
-use crate::api::github::AuthStatus;
+use super::github::{InvalidJson, Session};
+use crate::api::github::{AuthStatus, SessionValue};
 use serde::Deserialize;
 use std::collections::HashMap;
 use yew::{html, Html};
@@ -38,7 +38,7 @@ impl crate::route::Route for Route {
 				}
 			}
 			(Self::Logout, Some(_)) => {
-				AuthStatus::delete();
+				Session::delete();
 				let _ = gloo_utils::window().location().replace(&base_url);
 			}
 			(Self::TokenExchange, Some(AuthStatus::Authorizing)) => {
@@ -66,20 +66,21 @@ impl crate::route::Route for Route {
 						_ => return,
 					}
 
-					match super::github::CurrentUser::get().await {
+					match super::github::FetchCurrentUser::get().await {
 						Ok(user) => {
-							log::debug!("{user:?}");
+							user.apply_to_session();
 						}
 						Err(err) => {
-							log::error!("Failed to fetch current user {err:?}");
+							log::error!("Failed to fetch current user: {err:?}");
 						}
 					}
 
-					//let _ = gloo_utils::window().location().replace(&base_url);
+					let _ = gloo_utils::window().location().replace(&base_url);
 				});
 			}
 			_ => {}
 		}
+		log::debug!("render auth page");
 		html! {
 			<crate::index::Page />
 		}
@@ -94,10 +95,13 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 	- cors.sh blog post: https://blog.grida.co/cors-anywhere-for-everyone-free-reliable-cors-proxy-service-73507192714e
 	- [https://cors.sh/]
 	*/
-	let mut payload = std::collections::HashMap::new();
-	payload.insert("client_id", crate::config::CLIENT_ID.trim());
-	payload.insert("client_secret", crate::config::CLIENT_SECRET.trim());
-	payload.insert("code", &code);
+	let payload = {
+		let mut payload = std::collections::HashMap::new();
+		payload.insert("client_id", crate::config::CLIENT_ID.trim());
+		payload.insert("client_secret", crate::config::CLIENT_SECRET.trim());
+		payload.insert("code", &code);
+		payload
+	};
 	let builder = reqwest::Client::new()
 		.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
 		.json(&payload)
@@ -109,7 +113,7 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 			header.insert("Content-Type", "application/json".parse().unwrap());
 			header
 		});
-	log::debug!("Request: {:?}, Payload: {:?}", builder, payload);
+	//log::debug!("Request: {:?}, Payload: {:?}", builder, payload);
 	let response = builder.send().await?;
 	let text = response.text().await?;
 	let data: AccessTokenResponse = match serde_json::from_str(&text) {

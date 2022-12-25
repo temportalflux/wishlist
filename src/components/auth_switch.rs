@@ -1,4 +1,4 @@
-use crate::api::github::AuthStatus;
+use crate::api::github::{AuthStatus, SessionValue};
 use yew::{prelude::*, Component, Properties};
 
 #[derive(Debug, Clone, PartialEq, Properties)]
