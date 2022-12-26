@@ -1,5 +1,5 @@
 use reqwest::RequestBuilder;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 
 pub struct Response<T> {
 	builder: RequestBuilder,
@@ -14,6 +14,22 @@ where
 			builder,
 			marker: Default::default(),
 		}
+	}
+
+	pub fn with_query<Q>(mut self, query: &Q) -> Self
+	where
+		Q: Serialize + ?Sized,
+	{
+		self.builder = self.builder.query(query);
+		self
+	}
+
+	pub fn with_json<Q>(mut self, json: &Q) -> Self
+	where
+		Q: Serialize + ?Sized,
+	{
+		self.builder = self.builder.json(json);
+		self
 	}
 
 	pub async fn send(self) -> anyhow::Result<T> {

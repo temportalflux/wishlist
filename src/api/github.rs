@@ -27,11 +27,7 @@ where
 	Response::<T>::from(builder)
 }
 
-pub fn query_rest<T>(
-	method: Method,
-	endpoint: &str,
-	add_body: Option<fn(RequestBuilder) -> RequestBuilder>,
-) -> Response<T>
+pub fn query_rest<T>(method: Method, endpoint: &str) -> Response<T>
 where
 	T: DeserializeOwned,
 {
@@ -43,10 +39,7 @@ where
 	builder = builder.header("Authorization", format!("Bearer {token}"));
 	builder = builder.header("Accept", "application/vnd.github+json");
 	//builder = builder.header("Content-Type", "application/json");
-	builder = builder.header("X-GitHub-Api-Version", "2022-11-28");
-	if let Some(add_body) = add_body {
-		builder = add_body(builder);
-	}
+	//builder = builder.header("X-GitHub-Api-Version", "2022-11-28");
 	Response::<T>::from(builder)
 }
 

@@ -30,11 +30,6 @@ impl crate::route::Route for Route {
 
 #[function_component(Root)]
 fn root_comp() -> Html {
-	if let Some(nav) = use_navigator() {
-		log::debug!("nav basename: {:?}", nav.basename());
-	} else {
-		log::debug!("no nav");
-	}
 	html! {
 		<BrowserRouter>
 			{ <Route as route::Route>::switch() }

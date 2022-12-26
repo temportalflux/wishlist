@@ -1,6 +1,7 @@
 use crate::{
+	api::github::gist,
 	response::InvalidJson,
-	session::{AuthStatus, Session, SessionValue}, api::github::gist,
+	session::{AuthStatus, Session, SessionValue},
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -77,8 +78,8 @@ impl crate::route::Route for Route {
 						}
 					}
 
-					let result = gist::find_gist().await;
-					log::debug!("{result:?}");
+					//let result = gist::find_gist().await;
+					//log::debug!("{result:?}");
 
 					//let _ = gloo_utils::window().location().replace(&base_url);
 				});
@@ -107,8 +108,14 @@ async fn exchange_tokens(code: &String) -> anyhow::Result<String> {
 		payload.insert("code", &code);
 		payload
 	};
+	// Proxies:
+	//let proxy = "https://proxy.cors.sh/";
+	//let proxy = "https://thingproxy.freeboard.io/fetch/";
+	let proxy = "https://corsproxy.io/?";
+	let target = "https://github.com/login/oauth/access_token";
+	let target = urlencoding::encode(target);
 	let builder = reqwest::Client::new()
-		.post("https://proxy.cors.sh/https://github.com/login/oauth/access_token")
+		.post(format!("{proxy}{target}"))
 		.json(&payload)
 		.headers({
 			let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
