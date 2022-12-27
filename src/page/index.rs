@@ -1,6 +1,7 @@
 use crate::{
-	api::github::gist::{self, Gist},
+	api::github::gist::{self},
 	components::{user, AuthSwitch},
+	session::{Profile, SessionValue},
 };
 use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
@@ -73,26 +74,25 @@ enum Route {
 
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
-		let fetch = Callback::from(|_| {
-			if crate::session::Session::get().status.is_some() {
-				wasm_bindgen_futures::spawn_local(async move {
-					let result = gist::find_gist().await;
-					log::debug!("{result:?}");
-				});
-			}
-		});
 		let create_private = Callback::from(|_| {
 			wasm_bindgen_futures::spawn_local(async {
-				let mut user_data = gist::AppUserData::new_gist();
-				let result = user_data.save().await;
-				log::debug!("{result:?}");
+				match gist::FetchProfile::get().await {
+					Ok(profile) => profile.apply_to_session(),
+					Err(err) => log::debug!("{err:?}"),
+				}
 			});
 		});
 		let create_wishlist = Callback::from(|_| {
 			wasm_bindgen_futures::spawn_local(async {
-				let mut list = gist::List::new("Test List");
-				let result = list.into_gist().save().await;
+				let list = gist::List::new("Test List");
+				let mut gist = list.into_gist();
+				let result = gist.save().await;
 				log::debug!("{result:?}");
+				if result.is_ok() {
+					let mut profile = Profile::load().unwrap();
+					profile.lists.push(gist.id.unwrap());
+					profile.apply_to_session();
+				}
 			});
 		});
 		match self {
@@ -101,8 +101,7 @@ impl crate::route::Route for Route {
 					<Tile>
 						<Tile vertical=true size={ybc::TileSize::Four}>
 							<Tile classes={"box"}>
-								<Button onclick={fetch}>{"Find Gists"}</Button>
-								<Button onclick={create_private}>{"Create private data"}</Button>
+								<Button onclick={create_private}>{"Fetch gist data"}</Button>
 								<Button onclick={create_wishlist}>{"Create New Wishlist"}</Button>
 							</Tile>
 							/* .. snip .. more tiles here .. */

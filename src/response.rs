@@ -5,6 +5,11 @@ pub struct Response<T> {
 	builder: RequestBuilder,
 	marker: std::marker::PhantomData<T>,
 }
+impl<T> std::fmt::Debug for Response<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.builder.fmt(f)
+	}
+}
 impl<T> Response<T>
 where
 	T: DeserializeOwned,

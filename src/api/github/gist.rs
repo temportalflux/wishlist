@@ -1,13 +1,20 @@
+use crate::session::Profile;
+
 use super::query_rest;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, future::Future, pin::Pin};
+use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GistId(String);
 impl From<String> for GistId {
 	fn from(value: String) -> Self {
 		Self(value)
+	}
+}
+impl ToString for GistId {
+	fn to_string(&self) -> String {
+		self.0.clone()
 	}
 }
 impl GistId {
@@ -16,47 +23,58 @@ impl GistId {
 	}
 }
 
-pub async fn find_gist() -> anyhow::Result<(Option<GistId>, Vec<GistId>)> {
-	#[derive(Deserialize, Debug)]
-	struct Gist {
-		id: String,
-		url: String,
-		description: String,
-		files: HashMap<String, File>,
-		public: bool,
+pub struct FetchProfile;
+impl FetchProfile {
+	pub async fn get() -> anyhow::Result<Profile> {
+		let (app_user_data, lists) = Self::fetch_gists().await?;
+		let app_user_data = match app_user_data {
+			Some(data) => data,
+			None => {
+				let mut user_data = AppUserData::new_gist();
+				user_data.save().await?;
+				user_data.id.unwrap()
+			}
+		};
+		Ok(Profile {
+			app_user_data,
+			lists,
+		})
 	}
-	#[derive(Deserialize, Debug)]
-	struct File {
-		filename: String,
-		raw_url: String,
-	}
-	static ENTRIES_PER_PAGE: usize = 10;
-	let mut page = 1;
-	let mut private_id = None;
-	let mut list_ids = Vec::with_capacity(100);
-	'fetch_gists: loop {
-		let request = query_rest::<Vec<Gist>>(Method::GET, "/gists").with_query(&{
-			let mut query = HashMap::new();
-			query.insert("page", page);
-			query.insert("per_page", ENTRIES_PER_PAGE);
-			query
-		});
-		let gists = request.send().await?;
-		log::debug!("Requested page {page}, found {} gists.", gists.len());
-		page += 1;
-		let is_last_page = gists.is_empty() || gists.len() < ENTRIES_PER_PAGE;
-		for gist in gists.into_iter() {
-			if private_id.is_none() && gist.description.starts_with(AppUserData::prefix()) {
-				private_id = Some(GistId::from(gist.id));
-			} else if gist.description.starts_with(List::prefix()) {
-				list_ids.push(GistId::from(gist.id));
+
+	async fn fetch_gists() -> anyhow::Result<(Option<GistId>, Vec<GistId>)> {
+		#[derive(Deserialize, Debug)]
+		struct Gist {
+			id: String,
+			description: String,
+		}
+		static ENTRIES_PER_PAGE: usize = 10;
+		let mut page = 1;
+		let mut private_id = None;
+		let mut list_ids = Vec::with_capacity(100);
+		'fetch_gists: loop {
+			let request = query_rest::<Vec<Gist>>(Method::GET, "/gists").with_query(&{
+				let mut query = HashMap::new();
+				query.insert("page", page);
+				query.insert("per_page", ENTRIES_PER_PAGE);
+				query
+			});
+			let gists = request.send().await?;
+			log::debug!("Requested page {page}, found {} gists.", gists.len());
+			page += 1;
+			let is_last_page = gists.is_empty() || gists.len() < ENTRIES_PER_PAGE;
+			for gist in gists.into_iter() {
+				if private_id.is_none() && gist.description.starts_with(AppUserData::prefix()) {
+					private_id = Some(GistId::from(gist.id));
+				} else if gist.description.starts_with(List::prefix()) {
+					list_ids.push(GistId::from(gist.id));
+				}
+			}
+			if is_last_page {
+				break 'fetch_gists;
 			}
 		}
-		if is_last_page {
-			break 'fetch_gists;
-		}
+		Ok((private_id, list_ids))
 	}
-	Ok((private_id, list_ids))
 }
 
 pub trait GistDocument {
@@ -65,58 +83,53 @@ pub trait GistDocument {
 }
 
 pub struct Gist<T> {
-	pub id: Option<String>,
+	pub id: Option<GistId>,
 	pub description: String,
 	pub public: bool,
-	pub files: HashMap<String, T>,
+	pub file: T,
 }
 impl<T> Gist<T>
 where
 	T: GistDocument,
 {
-	pub fn get_mut(&mut self, file_name: &str) -> Option<&mut T> {
-		self.files.get_mut(file_name)
-	}
-
 	pub async fn save(&mut self) -> anyhow::Result<()> {
-		#[derive(Serialize)]
+		#[derive(Debug, Serialize)]
 		struct Body {
 			description: String,
 			public: bool,
 			files: HashMap<String, File>,
 		}
-		#[derive(Serialize)]
+		#[derive(Debug, Serialize)]
 		struct File {
 			content: String,
 		}
-		#[derive(Deserialize)]
+		#[derive(Debug, Deserialize)]
 		struct GistData {
 			id: String,
 		}
 		let body = Body {
 			description: self.description.clone(),
 			public: self.public,
-			files: self
-				.files
-				.iter()
-				.map(|(name, item)| {
-					(
-						name.clone(),
-						File {
-							content: item.as_document().to_string(),
-						},
-					)
-				})
-				.collect(),
+			files: {
+				let mut files = HashMap::new();
+				files.insert(
+					self.description.clone(),
+					File {
+						content: self.file.as_document().to_string(),
+					},
+				);
+				files
+			},
 		};
 
 		let endpoint = match &self.id {
-			Some(id) => format!("/gists/{id}"),
+			Some(id) => format!("/gists/{}", id.to_string()),
 			None => "/gists".to_owned(),
 		};
 		let request = query_rest::<GistData>(Method::POST, &endpoint).with_json(&body);
+		log::debug!("Request: {request:?} Body: {body:?}");
 		let gist_data = request.send().await?;
-		self.id = Some(gist_data.id);
+		self.id = Some(gist_data.id.into());
 		Ok(())
 	}
 }
@@ -131,11 +144,7 @@ impl AppUserData {
 			id: None,
 			description: format!("{} - App User Data", Self::prefix()),
 			public: false,
-			files: {
-				let mut files = HashMap::new();
-				files.insert(Self::prefix().to_owned(), Self {});
-				files
-			},
+			file: Self {},
 		}
 	}
 }
@@ -146,13 +155,12 @@ impl GistDocument for AppUserData {
 
 	fn as_document(&self) -> kdl::KdlDocument {
 		let mut doc = kdl::KdlDocument::new();
-		/*
 		doc.nodes_mut().push({
 			let mut node = kdl::KdlNode::new("name");
-			node.entries_mut().push(kdl::KdlEntry::new(self.name.clone()));
+			node.entries_mut()
+				.push(kdl::KdlEntry::new("name goes here"));
 			node
 		});
-		*/
 		doc
 	}
 }
@@ -164,20 +172,19 @@ pub struct List {
 }
 impl List {
 	pub fn new(name: impl Into<String>) -> Self {
-		Self { name: name.into(), public: false }
+		Self {
+			name: name.into(),
+			public: false,
+		}
 	}
 }
 impl List {
 	pub fn into_gist(self) -> Gist<List> {
-		let public = self.public;
-		let description = format!("{} - {}", Self::prefix(), self.name);
-		let mut files = HashMap::new();
-		files.insert(description.clone(), self);
 		Gist {
 			id: None,
-			description,
-			public,
-			files,
+			description: format!("{} - {}", Self::prefix(), self.name),
+			public: self.public,
+			file: self,
 		}
 	}
 }

@@ -1,22 +1,26 @@
 use gloo_storage::{SessionStorage, Storage};
 use serde::{Deserialize, Serialize};
+use crate::api::github::gist::GistId;
 
 #[derive(Debug)]
 pub struct Session {
 	pub status: Option<AuthStatus>,
 	pub user: Option<User>,
+	pub profile: Option<Profile>,
 }
 impl Session {
 	pub fn get() -> Self {
 		Self {
 			status: AuthStatus::load(),
 			user: User::load(),
+			profile: Profile::load(),
 		}
 	}
 
 	pub fn delete() {
 		AuthStatus::delete();
 		User::delete();
+		Profile::delete();
 	}
 }
 
@@ -96,5 +100,16 @@ pub struct User {
 impl SessionValue for User {
 	fn id() -> &'static str {
 		"user"
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Profile {
+	pub app_user_data: GistId,
+	pub lists: Vec<GistId>,
+}
+impl SessionValue for Profile {
+	fn id() -> &'static str {
+		"profile"
 	}
 }

@@ -2,8 +2,8 @@ use crate::{
 	response::Response,
 	session::{AuthStatus, SessionValue, User},
 };
-use reqwest::{Method, RequestBuilder};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use reqwest::Method;
+use serde::{de::DeserializeOwned, Deserialize};
 
 pub mod gist;
 

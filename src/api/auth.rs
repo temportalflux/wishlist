@@ -1,5 +1,5 @@
 use crate::{
-	api::github::gist,
+	api::github::{gist::FetchProfile, FetchCurrentUser},
 	response::InvalidJson,
 	session::{AuthStatus, Session, SessionValue},
 };
@@ -69,19 +69,16 @@ impl crate::route::Route for Route {
 						_ => return,
 					}
 
-					match super::github::FetchCurrentUser::get().await {
-						Ok(user) => {
-							user.apply_to_session();
-						}
-						Err(err) => {
-							log::error!("Failed to fetch current user: {err:?}");
-						}
+					match FetchCurrentUser::get().await {
+						Ok(user) => user.apply_to_session(),
+						Err(err) => log::debug!("{err:?}"),
+					}
+					match FetchProfile::get().await {
+						Ok(profile) => profile.apply_to_session(),
+						Err(err) => log::debug!("{err:?}"),
 					}
 
-					//let result = gist::find_gist().await;
-					//log::debug!("{result:?}");
-
-					//let _ = gloo_utils::window().location().replace(&base_url);
+					let _ = gloo_utils::window().location().replace(&base_url);
 				});
 			}
 			_ => {}

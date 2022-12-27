@@ -1,5 +1,5 @@
 use yew::{function_component, html, Callback, Classes, Html};
-use yew_router::{prelude::use_navigator, BrowserRouter, Routable};
+use yew_router::{BrowserRouter, Routable};
 
 pub mod api;
 pub mod components;
