@@ -5,7 +5,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GistId(String);
 impl From<String> for GistId {
 	fn from(value: String) -> Self {
@@ -21,6 +21,13 @@ impl GistId {
 	pub fn get_url(&self) -> String {
 		format!("https://api.github.com/gists/{}", self.0)
 	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GistInfo {
+	pub id: GistId,
+	pub title: String,
+	pub owner_login: String,
 }
 
 pub struct FetchProfile;
@@ -41,16 +48,21 @@ impl FetchProfile {
 		})
 	}
 
-	async fn fetch_gists() -> anyhow::Result<(Option<GistId>, Vec<GistId>)> {
+	async fn fetch_gists() -> anyhow::Result<(Option<GistId>, Vec<GistInfo>)> {
 		#[derive(Deserialize, Debug)]
 		struct Gist {
 			id: String,
 			description: String,
+			owner: Owner,
+		}
+		#[derive(Deserialize, Debug)]
+		struct Owner {
+			login: String,
 		}
 		static ENTRIES_PER_PAGE: usize = 10;
 		let mut page = 1;
 		let mut private_id = None;
-		let mut list_ids = Vec::with_capacity(100);
+		let mut lists = Vec::with_capacity(100);
 		'fetch_gists: loop {
 			let request = query_rest::<Vec<Gist>>(Method::GET, "/gists").with_query(&{
 				let mut query = HashMap::new();
@@ -66,14 +78,24 @@ impl FetchProfile {
 				if private_id.is_none() && gist.description.starts_with(AppUserData::prefix()) {
 					private_id = Some(GistId::from(gist.id));
 				} else if gist.description.starts_with(List::prefix()) {
-					list_ids.push(GistId::from(gist.id));
+					let name = gist
+						.description
+						.strip_prefix(&format!("{} - ", List::prefix()))
+						.unwrap()
+						.to_owned();
+					lists.push(GistInfo {
+						id: GistId::from(gist.id),
+						title: name,
+						owner_login: gist.owner.login,
+					});
 				}
 			}
 			if is_last_page {
 				break 'fetch_gists;
 			}
 		}
-		Ok((private_id, list_ids))
+		lists.sort_by(|a, b| a.title.partial_cmp(&b.title).unwrap());
+		Ok((private_id, lists))
 	}
 }
 

@@ -1,8 +1,5 @@
-use crate::{
-	api::github::gist::{self},
-	components::{user, AuthSwitch},
-	session::{Profile, SessionValue},
-};
+use super::Home;
+use crate::components::{user, AuthSwitch};
 use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
 use yew_router::{
@@ -74,40 +71,9 @@ enum Route {
 
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
-		let create_private = Callback::from(|_| {
-			wasm_bindgen_futures::spawn_local(async {
-				match gist::FetchProfile::get().await {
-					Ok(profile) => profile.apply_to_session(),
-					Err(err) => log::debug!("{err:?}"),
-				}
-			});
-		});
-		let create_wishlist = Callback::from(|_| {
-			wasm_bindgen_futures::spawn_local(async {
-				let list = gist::List::new("Test List");
-				let mut gist = list.into_gist();
-				let result = gist.save().await;
-				log::debug!("{result:?}");
-				if result.is_ok() {
-					let mut profile = Profile::load().unwrap();
-					profile.lists.push(gist.id.unwrap());
-					profile.apply_to_session();
-				}
-			});
-		});
 		match self {
 			Self::Home => html! {
-				<Container fluid=true>
-					<Tile>
-						<Tile vertical=true size={ybc::TileSize::Four}>
-							<Tile classes={"box"}>
-								<Button onclick={create_private}>{"Fetch gist data"}</Button>
-								<Button onclick={create_wishlist}>{"Create New Wishlist"}</Button>
-							</Tile>
-							/* .. snip .. more tiles here .. */
-						</Tile>
-					</Tile>
-				</Container>
+				<Home />
 			},
 			Self::UserGuide => html! {
 				<Container fluid=true>

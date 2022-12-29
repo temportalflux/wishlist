@@ -1,6 +1,6 @@
+use crate::api::github::gist::{GistId, GistInfo};
 use gloo_storage::{SessionStorage, Storage};
 use serde::{Deserialize, Serialize};
-use crate::api::github::gist::GistId;
 
 #[derive(Debug)]
 pub struct Session {
@@ -46,7 +46,7 @@ pub trait SessionValue {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthStatus {
 	Authorizing,
 	ExchangingTokens,
@@ -91,7 +91,7 @@ impl AuthStatus {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
 	pub name: String,
 	pub login: String,
@@ -103,10 +103,10 @@ impl SessionValue for User {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
 	pub app_user_data: GistId,
-	pub lists: Vec<GistId>,
+	pub lists: Vec<GistInfo>,
 }
 impl SessionValue for Profile {
 	fn id() -> &'static str {

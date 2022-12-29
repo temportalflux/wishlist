@@ -17,7 +17,7 @@ ybc = { git = "https://github.com/SionoiS/ybc", branch = "alpha-v0.4" }
 yew-router = { version = "0.17" } # limited by yew:0.19
 gloo-storage = "0.2"
 gloo-utils = "0.1"
-web-sys = { version = "0.3", features = ["Request", "Storage", "Window"] }
+web-sys = { version = "0.3", features = ["Request", "Storage", "Window", "DataTransfer"] }
 wasm-bindgen-futures = "0.4"
 reqwest = { version = "0.11", features = ["json"] }
 serde = "1.0"
@@ -26,4 +26,4 @@ anyhow = "1.0"
 thiserror = "1.0"
 urlencoding = "2.1"
 kdl = "4.6"
-async-channel = "1.8"
+yew-hooks = "0.2"
