@@ -2,7 +2,6 @@ use session::AuthStatus;
 use yew::{function_component, html, Classes, Html};
 use yew_router::{BrowserRouter, Routable};
 use yewdux::prelude::use_store;
-
 use crate::components::wishlist;
 
 pub mod api;
@@ -12,6 +11,15 @@ pub mod page;
 pub mod response;
 pub mod route;
 pub mod session;
+
+pub fn base_url() -> url::Url {
+	url::Url::parse(&gloo_utils::document().base_uri().ok().flatten().unwrap()).unwrap()
+}
+
+pub fn to_abs_route(route: impl Routable) -> String {
+	let url = base_url().join(&route.to_path()).unwrap();
+	url.as_str().to_owned()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Routable)]
 pub enum Route {

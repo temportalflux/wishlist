@@ -4,6 +4,7 @@ use crate::{
 		wishlist::{InfoModalPrompt, InfoModalProps},
 		AuthSwitch,
 	},
+	page::Route,
 	session::{Profile, User},
 };
 use ybc::{
@@ -12,8 +13,10 @@ use ybc::{
 };
 use yew::prelude::*;
 use yew_hooks::{
-	use_async, use_drag_with_options, use_drop_with_options, UseDragOptions, UseDropOptions,
+	use_async, use_clipboard, use_drag_with_options, use_drop_with_options, UseDragOptions,
+	UseDropOptions,
 };
+use yew_router::prelude::Link;
 use yewdux::prelude::{use_store, Dispatch};
 
 #[function_component]
@@ -93,6 +96,11 @@ pub struct WishlistCardProps {
 
 #[function_component]
 pub fn WishlistCard(props: &WishlistCardProps) -> Html {
+	let clipboard = use_clipboard();
+	let absolute_route = crate::to_abs_route(props.info.id.as_route());
+	let copy_route_to_clipboard = Callback::from(move |_| {
+		clipboard.write_text(absolute_route.clone());
+	});
 	html! {
 		<div class={"card"}>
 			<CardHeader>
@@ -106,8 +114,8 @@ pub fn WishlistCard(props: &WishlistCardProps) -> Html {
 				</Content>
 			</CardContent>
 			<CardFooter>
-				<a href="#" class="card-footer-item">{"Open"}</a>
-				<a href="#" class="card-footer-item">{"Share"}</a>
+				<Link<Route> classes="card-footer-item" to={props.info.id.as_route()}>{"Open"}</Link<Route>>
+				<a class="card-footer-item" onclick={copy_route_to_clipboard}>{"Copy Link"}</a>
 			</CardFooter>
 		</div>
 	}

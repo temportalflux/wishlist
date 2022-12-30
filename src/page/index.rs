@@ -1,5 +1,8 @@
 use super::Home;
-use crate::components::{user, AuthSwitch};
+use crate::{
+	api::github::gist::GistId,
+	components::{user, AuthSwitch},
+};
 use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
 use yew_router::{
@@ -58,12 +61,14 @@ pub fn Page() -> Html {
 	</>}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Routable)]
-enum Route {
+#[derive(Debug, Clone, PartialEq, Routable)]
+pub enum Route {
 	#[at("/")]
 	Home,
 	#[at("/guide")]
 	UserGuide,
+	#[at("/:gist_id")]
+	List { gist_id: GistId },
 	#[not_found]
 	#[at("/404")]
 	NotFound,
@@ -86,6 +91,9 @@ impl crate::route::Route for Route {
 						</Tile>
 					</Tile>
 				</Container>
+			},
+			Self::List { gist_id } => html! {
+				<h1>{gist_id}</h1>
 			},
 			Self::NotFound => html! {
 				<h1>{"404: Page not found"}</h1>

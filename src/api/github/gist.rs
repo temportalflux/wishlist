@@ -1,5 +1,5 @@
 use super::query_rest;
-use crate::session::Profile;
+use crate::{page::Route, session::Profile};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Deref, str::FromStr};
@@ -19,14 +19,27 @@ impl Deref for GistId {
 		&self.0
 	}
 }
-impl ToString for GistId {
-	fn to_string(&self) -> String {
-		self.0.clone()
-	}
-}
 impl GistId {
 	pub fn get_url(&self) -> String {
 		format!("https://api.github.com/gists/{}", self.0)
+	}
+
+	pub fn as_route(&self) -> Route {
+		Route::List {
+			gist_id: self.clone(),
+		}
+	}
+}
+impl FromStr for GistId {
+	type Err = ();
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Ok(Self(s.to_owned()))
+	}
+}
+impl std::fmt::Display for GistId {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
 	}
 }
 
