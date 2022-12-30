@@ -1,80 +1,16 @@
-use std::rc::Rc;
-use crate::api::github::{
-	gist::{self, GistId},
+use crate::{
+	api::github::gist::{self, GistId},
+	hooks::use_async,
 };
-use ybc::{Container, Content, Icon, Title, Section, Subtitle, Tags, Tag, Button, Size, Notification};
+use ybc::{
+	Button, Container, Content, Icon, Notification, Section, Size, Subtitle, Tag, Tags, Title,
+};
 use yew::prelude::*;
-use yew_hooks::{use_mount, UseAsyncState, use_clipboard};
+use yew_hooks::use_clipboard;
 
 #[derive(Debug, Clone, PartialEq, Properties)]
 pub struct PageProps {
 	pub gist_id: GistId,
-}
-
-pub struct AsyncHandle<T, E> {
-	state: UseStateHandle<UseAsyncState<T, E>>,
-	run: Rc<dyn Fn()>,
-}
-impl<T, E> AsyncHandle<T, E> {
-	pub fn run(&self) {
-		(*self.run)();
-	}
-}
-impl<T, E> std::ops::Deref for AsyncHandle<T, E> {
-	type Target = UseAsyncState<T, E>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.state
-	}
-}
-
-#[hook]
-fn use_async_noclone<F, T, E>(run_first_mount: bool, make_future: F) -> AsyncHandle<T, E>
-where
-	F: Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>>>> + 'static,
-	T: 'static,
-	E: 'static,
-{
-	let state = use_state(|| UseAsyncState {
-		loading: false,
-		data: None,
-		error: None,
-	});
-	let make_future = Rc::new(make_future);
-	let run = {
-		let state = state.clone();
-		Rc::new(move || {
-			state.set(UseAsyncState {
-				loading: true,
-				data: None,
-				error: None,
-			});
-			let async_state = state.clone();
-			let make_future = make_future.clone();
-			wasm_bindgen_futures::spawn_local(async move {
-				let final_state = match make_future().await {
-					Ok(data) => UseAsyncState {
-						loading: false,
-						data: Some(data),
-						error: None,
-					},
-					Err(err) => UseAsyncState {
-						loading: false,
-						data: None,
-						error: Some(err),
-					},
-				};
-				async_state.set(final_state);
-			})
-		})
-	};
-	let run_on_mount = run.clone();
-	use_mount(move || {
-		if run_first_mount {
-			run_on_mount();
-		}
-	});
-	AsyncHandle { state, run }
 }
 
 #[function_component]
@@ -86,7 +22,7 @@ pub fn Page(props: &PageProps) -> Html {
 	let fetch = {
 		let handle = (state.clone(), saved.clone());
 		let fetch_id = props.gist_id.clone();
-		let fetch = use_async_noclone(false, move || {
+		let fetch = use_async(false, move || {
 			let (state, saved) = handle.clone();
 			let gist_id = fetch_id.clone();
 			Box::pin(async move {
@@ -132,7 +68,7 @@ pub fn Page(props: &PageProps) -> Html {
 		})
 	};
 
-	let mut save_changes_notif_classes = classes!{"m-5"};
+	let mut save_changes_notif_classes = classes! {"m-5"};
 	if *state == *saved {
 		save_changes_notif_classes.push("is-hidden");
 	}

@@ -3,7 +3,7 @@ use crate::{
 	api::github::gist::GistId,
 	components::{user, wishlist, AuthSwitch},
 };
-use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile, Icon};
+use ybc::{Button, Container, Icon, NavbarDropdown, NavbarItem, Tile};
 use yew::prelude::*;
 use yew_router::{
 	prelude::{use_navigator, Link},

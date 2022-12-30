@@ -7,6 +7,7 @@ use yewdux::prelude::use_store;
 pub mod api;
 pub mod components;
 pub mod config;
+pub mod hooks;
 pub mod page;
 pub mod response;
 pub mod route;
