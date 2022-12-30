@@ -76,6 +76,19 @@ impl Visibility {
 			Self::Private => "private",
 		}
 	}
+
+	pub fn as_tag(&self, classes: Option<yew::Classes>) -> yew::Html {
+		use yew::html;
+		let mut classes = classes.unwrap_or_default();
+		match self {
+			Self::Public => classes.push("is-info"),
+			Self::Private => {
+				classes.push("is-danger");
+				classes.push("is-light");
+			}
+		}
+		html! {<ybc::Tag classes={classes}>{self}</ybc::Tag>}
+	}
 }
 impl FromStr for Visibility {
 	type Err = ();
@@ -121,7 +134,7 @@ impl FetchProfile {
 		let app_user_data = match app_user_data {
 			Some(data) => data,
 			None => {
-				let mut user_data = AppUserData::new_gist();
+				let mut user_data = Gist::<AppUserData>::default();
 				user_data.save().await?;
 				user_data.id.unwrap()
 			}
@@ -163,11 +176,7 @@ impl FetchProfile {
 				if private_id.is_none() && gist.description.starts_with(AppUserData::prefix()) {
 					private_id = Some(GistId::from(gist.id));
 				} else if gist.description.starts_with(List::prefix()) {
-					let name = gist
-						.description
-						.strip_prefix(&format!("{} - ", List::prefix()))
-						.unwrap()
-						.to_owned();
+					let name = List::parse_name_from(&gist.description).to_owned();
 					lists.push(GistInfo {
 						id: GistId::from(gist.id),
 						title: name,
@@ -186,21 +195,109 @@ impl FetchProfile {
 }
 
 pub trait GistDocument {
+	/// The prefix used for this document-type in the description.
 	fn prefix() -> &'static str;
+
+	fn name_prefix() -> String {
+		format!("{} - ", Self::prefix())
+	}
+
+	/// Return the name of the document, for use in the description.
+	fn name(&self) -> &str
+	where
+		Self: Sized;
+
+	/// Return the document description, as a combination of prefix and name.
+	fn description(&self) -> String
+	where
+		Self: Sized,
+	{
+		format!("{}{}", Self::name_prefix(), self.name())
+	}
+
+	fn parse_name_from<'s>(description: &'s str) -> &'s str {
+		description.strip_prefix(&Self::name_prefix()).unwrap()
+	}
+
+	/// Serialize as a kdl document
 	fn as_document(&self) -> kdl::KdlDocument;
+
+	/// Deserialize from a kdl document
+	fn from_kdl(doc: &kdl::KdlDocument) -> anyhow::Result<Self>
+	where
+		Self: Sized;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Gist<T> {
 	pub id: Option<GistId>,
 	pub description: String,
 	pub visibility: Visibility,
+	pub owner_login: String,
 	pub file: T,
+}
+impl<T> From<T> for Gist<T>
+where
+	T: GistDocument,
+{
+	fn from(document: T) -> Self {
+		Self {
+			id: None,
+			description: document.description(),
+			visibility: Visibility::Private,
+			owner_login: String::new(),
+			file: document,
+		}
+	}
 }
 impl<T> Gist<T>
 where
 	T: GistDocument,
 {
+	pub fn with_visibility(mut self, value: Visibility) -> Self {
+		self.visibility = value;
+		self
+	}
+
+	pub fn with_owner(mut self, value: String) -> Self {
+		self.owner_login = value;
+		self
+	}
+
+	pub async fn fetch(id: GistId) -> anyhow::Result<Self> {
+		#[allow(dead_code)]
+		#[derive(Deserialize, Debug)]
+		struct Root {
+			id: String,
+			description: String,
+			owner: Owner,
+			public: bool,
+			updated_at: String,
+			files: HashMap<String, File>,
+		}
+		#[derive(Deserialize, Debug)]
+		struct Owner {
+			login: String,
+		}
+		#[derive(Deserialize, Debug)]
+		struct File {
+			content: String,
+		}
+		let request = query_rest::<Root>(Method::GET, &format!("/gists/{id}"));
+		log::debug!("Request: {request:?}");
+		let mut data = request.send().await?;
+		let raw_file = data.files.remove(&data.description).unwrap();
+		let kdl: kdl::KdlDocument = raw_file.content.parse()?;
+		let document = T::from_kdl(&kdl)?;
+		Ok(Self {
+			id: Some(data.id.into()),
+			description: data.description,
+			visibility: data.public.into(),
+			owner_login: data.owner.login,
+			file: document,
+		})
+	}
+
 	pub async fn save(&mut self) -> anyhow::Result<()> {
 		#[derive(Debug, Serialize)]
 		struct Body {
@@ -247,19 +344,13 @@ where
 /// Contains information like the items reserved from another user's wishlist.
 #[derive(Default)]
 pub struct AppUserData {}
-impl AppUserData {
-	pub fn new_gist() -> Gist<Self> {
-		Gist {
-			id: None,
-			description: format!("{} - App User Data", Self::prefix()),
-			visibility: Visibility::Private,
-			file: Self {},
-		}
-	}
-}
 impl GistDocument for AppUserData {
 	fn prefix() -> &'static str {
 		"wishlist::private"
+	}
+
+	fn name(&self) -> &str {
+		"App User Data"
 	}
 
 	fn as_document(&self) -> kdl::KdlDocument {
@@ -272,40 +363,29 @@ impl GistDocument for AppUserData {
 		});
 		doc
 	}
+
+	fn from_kdl(_doc: &kdl::KdlDocument) -> anyhow::Result<Self> {
+		Ok(Self {})
+	}
 }
 
-#[derive(Debug)]
 /// A wishlist stored on github with the "wishlist::document" prefix.
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct List {
-	name: String,
-	visibility: Visibility,
+	pub name: String,
 }
 impl List {
 	pub fn new(name: impl Into<String>) -> Self {
-		Self {
-			name: name.into(),
-			visibility: Visibility::Private,
-		}
-	}
-
-	pub fn with_visibility(mut self, vis: Visibility) -> Self {
-		self.visibility = vis;
-		self
-	}
-}
-impl List {
-	pub fn into_gist(self) -> Gist<List> {
-		Gist {
-			id: None,
-			description: format!("{} - {}", Self::prefix(), self.name),
-			visibility: self.visibility,
-			file: self,
-		}
+		Self { name: name.into() }
 	}
 }
 impl GistDocument for List {
 	fn prefix() -> &'static str {
 		"wishlist::document"
+	}
+
+	fn name(&self) -> &str {
+		&self.name
 	}
 
 	fn as_document(&self) -> kdl::KdlDocument {
@@ -317,5 +397,16 @@ impl GistDocument for List {
 			node
 		});
 		doc
+	}
+
+	fn from_kdl(doc: &kdl::KdlDocument) -> anyhow::Result<Self> {
+		let name = doc.get("name").expect("missing name node");
+		let name = name.get(0).expect("missing value for name node");
+		let name = name
+			.value()
+			.as_string()
+			.expect("value for name node is not a string")
+			.to_owned();
+		Ok(Self { name })
 	}
 }

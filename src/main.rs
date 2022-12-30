@@ -1,8 +1,8 @@
+use crate::components::wishlist;
 use session::AuthStatus;
 use yew::{function_component, html, Classes, Html};
 use yew_router::{BrowserRouter, Routable};
 use yewdux::prelude::use_store;
-use crate::components::wishlist;
 
 pub mod api;
 pub mod components;

@@ -83,8 +83,10 @@ pub fn InfoModal() -> Html {
 	let discard = dispatch.reduce_mut_callback(InfoModalPrompt::close);
 	let save_and_close = dispatch.reduce_mut_future_callback(|prompt| {
 		Box::pin(async move {
-			let list = gist::List::new(prompt.title.clone()).with_visibility(prompt.visibility);
-			let mut gist = list.into_gist();
+			let list = gist::List::new(prompt.title.clone());
+			let mut gist = gist::Gist::from(list)
+				.with_visibility(prompt.visibility)
+				.with_owner(prompt.owner_login.clone());
 			match gist.save().await {
 				Ok(_) => {
 					prompt.id = Some(gist.id.unwrap());

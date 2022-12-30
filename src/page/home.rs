@@ -42,7 +42,7 @@ pub fn Home() -> Html {
 		}
 		.into();
 	});
-	let mut refresh_icon = classes! {"fas", "fa-solid", "fa-arrows-rotate"};
+	let mut refresh_icon = classes! {"fas", "fa-arrows-rotate"};
 	if fetch_profile_handle.loading {
 		refresh_icon.push("fa-spin");
 	}
@@ -57,7 +57,7 @@ pub fn Home() -> Html {
 						<Control>
 							<Buttons size={ButtonGroupSize::Small}>
 								<Button classes={"is-primary"} onclick={create_wishlist}>
-									<Icon size={Size::Small}><i class="fas fa-solid fa-plus" /></Icon>
+									<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
 									<span>{"New"}</span>
 								</Button>
 								<Button onclick={refresh_profile}>

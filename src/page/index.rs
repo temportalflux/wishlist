@@ -1,9 +1,9 @@
 use super::Home;
 use crate::{
 	api::github::gist::GistId,
-	components::{user, AuthSwitch},
+	components::{user, wishlist, AuthSwitch},
 };
-use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile};
+use ybc::{Button, Container, NavbarDropdown, NavbarItem, Tile, Icon};
 use yew::prelude::*;
 use yew_router::{
 	prelude::{use_navigator, Link},
@@ -45,13 +45,19 @@ pub fn Page() -> Html {
 							<user::Identification />
 						</>})}>
 							<NavbarItem>
-								<Button classes={"is-dark"} onclick={logout}>{"Sign Out"}</Button>
+								<Button classes={"is-danger is-light"} onclick={logout}>
+									<Icon><i class="fas fa-right-from-bracket" /></Icon>
+									<span>{"Sign Out"}</span>
+								</Button>
 							</NavbarItem>
 						</NavbarDropdown>
 					})}
 					anonymous={(html! {
 						<NavbarItem>
-							<Button classes={"is-primary is-dark"} onclick={login}>{"Sign In"}</Button>
+							<Button classes={"is-primary is-dark"} onclick={login}>
+								<Icon><i class="fab fa-github" /></Icon>
+								<span>{"Sign In"}</span>
+							</Button>
 						</NavbarItem>
 					})}
 				/>
@@ -92,9 +98,7 @@ impl crate::route::Route for Route {
 					</Tile>
 				</Container>
 			},
-			Self::List { gist_id } => html! {
-				<h1>{gist_id}</h1>
-			},
+			Self::List { gist_id } => html! { <wishlist::Page gist_id={gist_id} /> },
 			Self::NotFound => html! {
 				<h1>{"404: Page not found"}</h1>
 			},
