@@ -1,5 +1,9 @@
-use yew::{function_component, html, Callback, Classes, Html};
+use session::AuthStatus;
+use yew::{function_component, html, Classes, Html};
 use yew_router::{BrowserRouter, Routable};
+use yewdux::prelude::use_store;
+
+use crate::components::wishlist;
 
 pub mod api;
 pub mod components;
@@ -20,7 +24,6 @@ pub enum Route {
 
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
-		log::debug!("session: {:?}", session::Session::get());
 		match self {
 			Self::Api => <api::Route as route::Route>::switch(),
 			Self::Webpage => html! { <page::Page /> },
@@ -34,27 +37,23 @@ fn root_comp() -> Html {
 		<BrowserRouter>
 			{ <Route as route::Route>::switch() }
 			<AuthModal />
+			<wishlist::InfoModal />
 		</BrowserRouter>
 	}
 }
 
 #[function_component]
 fn AuthModal() -> Html {
+	let (status, dispatch) = use_store::<AuthStatus>();
 	let mut classes = Classes::from("modal");
 	let mut subtitle = html! {};
 	let mut progress = html! {};
 	let mut info = html! {};
 	let mut close_button = html! {};
-	let refresh_modal = yew::use_force_update();
-	let close_modal = Callback::from(move |_| {
-		session::Session::delete();
-		refresh_modal.force_update();
+	let close_modal = dispatch.reduce_mut_callback(|status| {
+		*status = AuthStatus::None;
 	});
-	if let session::Session {
-		status: Some(status),
-		..
-	} = session::Session::get()
-	{
+	if *status != AuthStatus::None {
 		if status.should_show_modal() {
 			classes.push("is-active");
 		}

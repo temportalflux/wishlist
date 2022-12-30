@@ -1,13 +1,14 @@
 use crate::{
 	api::github::{gist::FetchProfile, FetchCurrentUser},
 	response::InvalidJson,
-	session::{AuthStatus, Session, SessionValue, User, Profile},
+	session::{AuthStatus, Profile, User},
 };
 use serde::Deserialize;
-use yew_hooks::{use_session_storage, use_is_first_mount, use_async};
 use std::collections::HashMap;
 use yew::{function_component, html, Html};
+use yew_hooks::{use_async, use_is_first_mount};
 use yew_router::Routable;
+use yewdux::prelude::Dispatch;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub enum Route {
@@ -21,10 +22,11 @@ pub enum Route {
 
 impl crate::route::Route for Route {
 	fn html(self) -> Html {
-		match (self, AuthStatus::load()) {
-			(Self::Login, None) => {
+		let auth_status = Dispatch::<AuthStatus>::new();
+		match (self, auth_status.get().as_ref()) {
+			(Self::Login, AuthStatus::None) => {
 				let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
-				AuthStatus::Authorizing.apply_to_session();
+				auth_status.set(AuthStatus::Authorizing);
 				let auth_url = {
 					let mut params = HashMap::new();
 					params.insert("client_id", crate::config::CLIENT_ID.trim().to_string());
@@ -38,16 +40,20 @@ impl crate::route::Route for Route {
 					format!("https://github.com/login/oauth/authorize?{params}")
 				};
 				if let Err(err) = gloo_utils::window().location().replace(auth_url.as_str()) {
-					AuthStatus::Failed(format!("{err:?}")).apply_to_session();
+					auth_status.set(AuthStatus::Failed(format!("{err:?}")));
 				}
-			},
-			(Self::Logout, Some(_)) => {
+			}
+			(Self::Logout, status) if *status != AuthStatus::None => {
 				let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
-				Session::delete();
+				auth_status.set(AuthStatus::None);
+				Dispatch::<User>::new().set(User::default());
+				Dispatch::<Profile>::new().set(Profile::default());
 				let _ = gloo_utils::window().location().replace(&base_url);
-			},
-			(Self::TokenExchange, Some(AuthStatus::Authorizing)) => return html! { <TokenExchangePage /> },
-			_ => {},
+			}
+			(Self::TokenExchange, AuthStatus::Authorizing) => {
+				return html! { <TokenExchangePage /> }
+			}
+			_ => {}
 		}
 		html! { <crate::page::Page /> }
 	}
@@ -55,17 +61,14 @@ impl crate::route::Route for Route {
 
 #[function_component]
 fn TokenExchangePage() -> Html {
-	AuthStatus::ExchangingTokens.apply_to_session();
+	let auth_status = Dispatch::<AuthStatus>::new();
+	auth_status.set(AuthStatus::ExchangingTokens);
 
 	let base_url = gloo_utils::document().base_uri().ok().flatten().unwrap();
 	let params_str = gloo_utils::window().location().search().unwrap();
 	let params = web_sys::UrlSearchParams::new_with_str(&params_str).unwrap();
 	let code = params.get("code").unwrap();
 
-	let auth_status = use_session_storage::<AuthStatus>(AuthStatus::id().to_string());
-	let user_handle = use_session_storage::<User>(User::id().to_string());
-	let profile_handle = use_session_storage::<Profile>(Profile::id().to_string());
-	
 	let authenticate = use_async(async move {
 		static MAX_ATTEMPTS: usize = 2;
 		let mut attempt = 0;
@@ -88,11 +91,11 @@ fn TokenExchangePage() -> Html {
 		}
 
 		match FetchCurrentUser::get().await {
-			Ok(data) => user_handle.set(data),
+			Ok(data) => Dispatch::<User>::new().set(data),
 			Err(err) => log::debug!("{err:?}"),
 		}
 		match FetchProfile::get().await {
-			Ok(profile) => profile_handle.set(profile),
+			Ok(profile) => Dispatch::<Profile>::new().set(profile),
 			Err(err) => log::debug!("{err:?}"),
 		}
 

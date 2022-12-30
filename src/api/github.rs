@@ -1,9 +1,10 @@
 use crate::{
 	response::Response,
-	session::{AuthStatus, SessionValue, User},
+	session::{AuthStatus, User},
 };
 use reqwest::Method;
 use serde::{de::DeserializeOwned, Deserialize};
+use yewdux::prelude::Dispatch;
 
 pub mod gist;
 
@@ -12,7 +13,7 @@ where
 	T: DeserializeOwned,
 {
 	static ENDPOINT: &'static str = "https://api.github.com/graphql";
-	let AuthStatus::Successful(token) = AuthStatus::load().unwrap() else {
+	let AuthStatus::Successful(token) = &*Dispatch::<AuthStatus>::new().get() else {
 		unimplemented!("No auth token while building request")
 	};
 	let mut builder = reqwest::Client::new().post(ENDPOINT);
@@ -31,7 +32,7 @@ pub fn query_rest<T>(method: Method, endpoint: &str) -> Response<T>
 where
 	T: DeserializeOwned,
 {
-	let AuthStatus::Successful(token) = AuthStatus::load().unwrap() else {
+	let AuthStatus::Successful(token) = &*Dispatch::<AuthStatus>::new().get() else {
 		unimplemented!("No auth token while building request")
 	};
 	let endpoint = format!("https://api.github.com{endpoint}");

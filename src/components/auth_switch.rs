@@ -1,5 +1,6 @@
-use crate::session::{AuthStatus, SessionValue};
-use yew::{prelude::*, Component, Properties};
+use crate::session::AuthStatus;
+use yew::{prelude::*, Properties};
+use yewdux::prelude::use_store;
 
 #[derive(Debug, Clone, PartialEq, Properties)]
 pub struct AuthSwitchProps {
@@ -9,20 +10,12 @@ pub struct AuthSwitchProps {
 	pub anonymous: Option<Html>,
 }
 
-pub struct AuthSwitch;
-impl Component for AuthSwitch {
-	type Message = ();
-	type Properties = AuthSwitchProps;
-
-	fn create(_ctx: &yew::Context<Self>) -> Self {
-		Self
-	}
-
-	fn view(&self, ctx: &yew::Context<Self>) -> yew::Html {
-		let empty = || html! {};
-		match AuthStatus::load() {
-			Some(AuthStatus::Successful(_)) => ctx.props().identified.clone().unwrap_or_else(empty),
-			_ => ctx.props().anonymous.clone().unwrap_or_else(empty),
-		}
+#[function_component]
+pub fn AuthSwitch(props: &AuthSwitchProps) -> Html {
+	let (auth_status, _dispatch) = use_store::<AuthStatus>();
+	let empty = || html! {};
+	match *auth_status {
+		AuthStatus::Successful(_) => props.identified.clone().unwrap_or_else(empty),
+		_ => props.anonymous.clone().unwrap_or_else(empty),
 	}
 }

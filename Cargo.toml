@@ -15,6 +15,7 @@ yew = { version = "0.20", features = ["csr"] }
 # waiting for https://github.com/thedodd/ybc/pull/32 to use crates.io @ v0.4
 ybc = { git = "https://github.com/SionoiS/ybc", branch = "alpha-v0.4" }
 yew-router = { version = "0.17" } # limited by yew:0.19
+yewdux = "0.9"
 gloo-storage = "0.2"
 gloo-utils = "0.1"
 web-sys = { version = "0.3", features = ["Request", "Storage", "Window", "DataTransfer"] }

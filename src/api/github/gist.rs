@@ -1,15 +1,22 @@
-use crate::session::Profile;
-
 use super::query_rest;
+use crate::session::Profile;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref, str::FromStr};
+use yew::html::IntoPropValue;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GistId(String);
 impl From<String> for GistId {
 	fn from(value: String) -> Self {
 		Self(value)
+	}
+}
+impl Deref for GistId {
+	type Target = str;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 impl ToString for GistId {
@@ -23,11 +30,75 @@ impl GistId {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Visibility {
+	Public,
+	Private,
+}
+impl Default for Visibility {
+	fn default() -> Self {
+		bool::default().into()
+	}
+}
+impl From<bool> for Visibility {
+	fn from(public: bool) -> Self {
+		match public {
+			true => Self::Public,
+			false => Self::Private,
+		}
+	}
+}
+impl Into<bool> for Visibility {
+	fn into(self) -> bool {
+		match self {
+			Self::Public => true,
+			Self::Private => false,
+		}
+	}
+}
+impl Visibility {
+	pub fn value(&self) -> &'static str {
+		match self {
+			Self::Public => "public",
+			Self::Private => "private",
+		}
+	}
+}
+impl FromStr for Visibility {
+	type Err = ();
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"public" => Ok(Self::Public),
+			"private" => Ok(Self::Private),
+			_ => Err(()),
+		}
+	}
+}
+impl std::fmt::Display for Visibility {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Public => "Anyone with link",
+				Self::Private => "Only me",
+			}
+		)
+	}
+}
+impl IntoPropValue<String> for Visibility {
+	fn into_prop_value(self) -> String {
+		self.value().to_owned()
+	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GistInfo {
 	pub id: GistId,
 	pub title: String,
 	pub owner_login: String,
+	pub visibility: Visibility,
 }
 
 pub struct FetchProfile;
@@ -54,6 +125,7 @@ impl FetchProfile {
 			id: String,
 			description: String,
 			owner: Owner,
+			public: bool,
 		}
 		#[derive(Deserialize, Debug)]
 		struct Owner {
@@ -87,6 +159,7 @@ impl FetchProfile {
 						id: GistId::from(gist.id),
 						title: name,
 						owner_login: gist.owner.login,
+						visibility: gist.public.into(),
 					});
 				}
 			}
@@ -104,10 +177,11 @@ pub trait GistDocument {
 	fn as_document(&self) -> kdl::KdlDocument;
 }
 
+#[derive(Debug)]
 pub struct Gist<T> {
 	pub id: Option<GistId>,
 	pub description: String,
-	pub public: bool,
+	pub visibility: Visibility,
 	pub file: T,
 }
 impl<T> Gist<T>
@@ -131,7 +205,7 @@ where
 		}
 		let body = Body {
 			description: self.description.clone(),
-			public: self.public,
+			public: self.visibility.into(),
 			files: {
 				let mut files = HashMap::new();
 				files.insert(
@@ -165,7 +239,7 @@ impl AppUserData {
 		Gist {
 			id: None,
 			description: format!("{} - App User Data", Self::prefix()),
-			public: false,
+			visibility: Visibility::Private,
 			file: Self {},
 		}
 	}
@@ -187,17 +261,23 @@ impl GistDocument for AppUserData {
 	}
 }
 
-/// A wishlist stored on github with the "wishlist::public" prefix.
+#[derive(Debug)]
+/// A wishlist stored on github with the "wishlist::document" prefix.
 pub struct List {
 	name: String,
-	public: bool,
+	visibility: Visibility,
 }
 impl List {
 	pub fn new(name: impl Into<String>) -> Self {
 		Self {
 			name: name.into(),
-			public: false,
+			visibility: Visibility::Private,
 		}
+	}
+
+	pub fn with_visibility(mut self, vis: Visibility) -> Self {
+		self.visibility = vis;
+		self
 	}
 }
 impl List {
@@ -205,14 +285,14 @@ impl List {
 		Gist {
 			id: None,
 			description: format!("{} - {}", Self::prefix(), self.name),
-			public: self.public,
+			visibility: self.visibility,
 			file: self,
 		}
 	}
 }
 impl GistDocument for List {
 	fn prefix() -> &'static str {
-		"wishlist::public"
+		"wishlist::document"
 	}
 
 	fn as_document(&self) -> kdl::KdlDocument {
