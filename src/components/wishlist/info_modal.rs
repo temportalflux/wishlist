@@ -104,24 +104,24 @@ pub fn InfoModal() -> Html {
 			<div class="modal-background"></div>
 			<div class="modal-content">
 				<ybc::Box>
-			<Field label={"Title"}>
-				<Control>
-					<Input
-						name="title" value={props.title.clone()}
-						update={update_title}
-						r#type={InputType::Text}
-						placeholder={"Ex: Birthday"}
-					/>
-				</Control>
-			</Field>
-			<Field label={"Visibility"} help={"Who else can see this wishlist?"}>
-				<Control>
-					<Select name="visibility" value={props.visibility} update={update_visibility}>
-						<option value={Visibility::Public.value()} selected={props.visibility == Visibility::Public}>{Visibility::Public}</option>
-						<option value={Visibility::Private.value()} selected={props.visibility == Visibility::Private}>{Visibility::Private}</option>
-					</Select>
-				</Control>
-			</Field>
+					<Field label={"Title"}>
+						<Control>
+							<Input
+								name="title" value={props.title.clone()}
+								update={update_title}
+								r#type={InputType::Text}
+								placeholder={"Ex: Birthday"}
+							/>
+						</Control>
+					</Field>
+					<Field label={"Visibility"} help={"Who else can see this wishlist?"}>
+						<Control>
+							<Select name="visibility" value={props.visibility} update={update_visibility}>
+								<option value={Visibility::Public.value()} selected={props.visibility == Visibility::Public}>{Visibility::Public}</option>
+								<option value={Visibility::Private.value()} selected={props.visibility == Visibility::Private}>{Visibility::Private}</option>
+							</Select>
+						</Control>
+					</Field>
 					<Field grouped=true>
 						<Control><Button classes={"is-danger is-light"} onclick={discard}>{"Cancel"}</Button></Control>
 						<Control><Button classes={"is-primary"} onclick={save_and_close}>{"Save"}</Button></Control>

@@ -1,5 +1,6 @@
 use crate::{
 	api::github::gist::{self, GistId},
+	components::wishlist::ItemModal,
 	hooks::use_async,
 };
 use ybc::{
@@ -18,6 +19,7 @@ pub fn Page(props: &PageProps) -> Html {
 	let clipboard = use_clipboard();
 	let state = use_state(|| gist::Gist::<gist::List>::default());
 	let saved = use_state(|| gist::Gist::<gist::List>::default());
+	let item_open_for_edit = use_state(|| None);
 
 	let fetch = {
 		let handle = (state.clone(), saved.clone());
@@ -80,6 +82,24 @@ pub fn Page(props: &PageProps) -> Html {
 		log::debug!("TODO: Save to gists");
 	});
 
+	let create_item = {
+		use crate::wishlist::item::*;
+		let item_open_for_edit = item_open_for_edit.clone();
+		Callback::from(move |_| {
+			item_open_for_edit.set(Some((None, Item::default())));
+			log::debug!("Open Editor! {:?}", *item_open_for_edit);
+		})
+	};
+	let save_edited_item = {
+		let item_open_for_edit = item_open_for_edit.clone();
+		Callback::from(move |value| {
+			if let Some((idx, item)) = value {
+				log::debug!("TODO: Save item to list: {idx:?} {item:?}");
+			}
+			item_open_for_edit.set(None);
+		})
+	};
+
 	html! {<>
 		<Section>
 			<Container classes={"is-flex is-flex-grow-1 is-flex-shrink-0"}>
@@ -113,6 +133,13 @@ pub fn Page(props: &PageProps) -> Html {
 				<Tag classes={"is-rounded"}>{"Category 2"}</Tag>
 				<Tag classes={"is-rounded"}>{"Category 3"}</Tag>
 			</Tags>
+			<Container>
+				<Button classes={"is-primary"} onclick={create_item}>
+					<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
+					<span>{"New Item"}</span>
+				</Button>
+			</Container>
 		</Section>
+		<ItemModal item={(*item_open_for_edit).clone()} on_close={save_edited_item} />
 	</>}
 }
