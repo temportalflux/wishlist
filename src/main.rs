@@ -1,6 +1,6 @@
 use crate::components::wishlist;
 use session::AuthStatus;
-use yew::{function_component, html, Classes, Html};
+use yew::{function_component, html, Html};
 use yew_router::{BrowserRouter, Routable};
 use yewdux::prelude::use_store;
 
@@ -54,7 +54,6 @@ fn root_comp() -> Html {
 #[function_component]
 fn AuthModal() -> Html {
 	let (status, dispatch) = use_store::<AuthStatus>();
-	let mut classes = Classes::from("modal");
 	let mut subtitle = html! {};
 	let mut progress = html! {};
 	let mut info = html! {};
@@ -62,10 +61,10 @@ fn AuthModal() -> Html {
 	let close_modal = dispatch.reduce_mut_callback(|status| {
 		*status = AuthStatus::None;
 	});
+	if *status == AuthStatus::None || !status.should_show_modal() {
+		return html! { <div class={"modal"} id="AuthModal" /> };
+	}
 	if *status != AuthStatus::None {
-		if status.should_show_modal() {
-			classes.push("is-active");
-		}
 		subtitle = html! {<ybc::Subtitle>{status.byline()}</ybc::Subtitle>};
 		progress = if status.should_show_progress() {
 			html! {<progress class={"progress is-large is-info"}></progress>}
@@ -89,7 +88,7 @@ fn AuthModal() -> Html {
 		};
 	}
 	html! {
-		<div class={classes}>
+		<div class={"modal is-active"} id="AuthModal">
 			<div class="modal-background"></div>
 			<div class="modal-content">
 				<ybc::Box>
