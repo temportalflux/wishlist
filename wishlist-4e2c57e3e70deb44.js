@@ -1090,24 +1090,24 @@ function getImports() {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1280 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 641, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper1255 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 725, __wbg_adapter_34);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper3036 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1748, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper3086 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1770, __wbg_adapter_37);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper3423 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1944, __wbg_adapter_40);
+    imports.wbg.__wbindgen_closure_wrapper3473 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1966, __wbg_adapter_40);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper3825 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 2072, __wbg_adapter_43);
+    imports.wbg.__wbindgen_closure_wrapper3875 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 2094, __wbg_adapter_43);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper3889 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 2100, __wbg_adapter_46);
+    imports.wbg.__wbindgen_closure_wrapper3939 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 2122, __wbg_adapter_46);
         return addHeapObject(ret);
     };
 
@@ -1146,7 +1146,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('wishlist-dce723d4e378c4d4_bg.wasm', import.meta.url);
+        input = new URL('wishlist-4e2c57e3e70deb44_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
