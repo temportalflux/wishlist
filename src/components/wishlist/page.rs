@@ -1,10 +1,11 @@
 use crate::{
 	api::github::gist::{self, GistId},
-	components::wishlist::ItemModal,
+	components::wishlist::{item::Item, ItemModal},
 	hooks::use_async,
 };
 use ybc::{
-	Button, Container, Content, Icon, Notification, Section, Size, Subtitle, Tag, Tags, Title,
+	Button, CardContent, CardFooter, CardHeader, Container, Content, Icon, Notification, Section,
+	Size, Subtitle, Tag, Tags, Title,
 };
 use yew::prelude::*;
 use yew_hooks::use_clipboard;
@@ -83,21 +84,36 @@ pub fn Page(props: &PageProps) -> Html {
 	});
 
 	let create_item = {
-		use crate::wishlist::item::*;
 		let item_open_for_edit = item_open_for_edit.clone();
 		Callback::from(move |_| {
 			item_open_for_edit.set(Some((None, Item::default())));
-			log::debug!("Open Editor! {:?}", *item_open_for_edit);
 		})
 	};
 	let save_edited_item = {
+		let state = state.clone();
 		let item_open_for_edit = item_open_for_edit.clone();
 		Callback::from(move |value| {
 			if let Some((idx, item)) = value {
-				log::debug!("TODO: Save item to list: {idx:?} {item:?}");
+				let mut gist = (*state).clone();
+				gist.file.update_or_insert_item(idx, item);
+				state.set(gist);
 			}
 			item_open_for_edit.set(None);
 		})
+	};
+
+	let tag_filters = match state.file.all_item_tags.is_empty() {
+		true => html! {},
+		false => {
+			html! {<>
+				<Tag classes={"is-rounded is-info"}>{"All"}</Tag>
+				{state.file.all_item_tags.iter().map(|tag| html! {
+					<Tag classes={"is-rounded"} onclick={Callback::from(|_| {
+						log::debug!("TODO: tag filers");
+					})}>{tag}</Tag>
+				}).collect::<Vec<_>>()}
+			</>}
+		}
 	};
 
 	html! {<>
@@ -127,19 +143,77 @@ pub fn Page(props: &PageProps) -> Html {
 					</Content>
 				</Notification>
 			</div>
-			<Tags classes={"is-justify-content-center"}>
-				<Tag classes={"is-rounded is-info"}>{"All"}</Tag>
-				<Tag classes={"is-rounded"}>{"Category 1"}</Tag>
-				<Tag classes={"is-rounded"}>{"Category 2"}</Tag>
-				<Tag classes={"is-rounded"}>{"Category 3"}</Tag>
+			<Tags classes={"is-justify-content-center are-medium"}>
+				{tag_filters}
 			</Tags>
 			<Container>
-				<Button classes={"is-primary"} onclick={create_item}>
-					<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
-					<span>{"New Item"}</span>
-				</Button>
+				<Content>
+					<Button classes={"is-primary"} onclick={create_item}>
+						<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
+						<span>{"New Item"}</span>
+					</Button>
+				</Content>
+				<div class={"content"} style={"display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); grid-gap: 0.5em;"}>
+					{state.file.items.iter().enumerate().map(|(idx, item)| html! {
+						<ItemCard {idx} item={item.clone()}
+							on_edit={{
+								let state = state.clone();
+								let item_open_for_edit = item_open_for_edit.clone();
+								Callback::from(move |idx| {
+									let item: Option<&Item> = state.file.items.get(idx);
+									if let Some(item) = item {
+										item_open_for_edit.set(Some((Some(idx), item.clone())));
+									}
+								})
+							}}
+							on_delete={{
+								let state = state.clone();
+								Callback::from(move |idx| {
+									// TODO: Prompt delete modal
+									let mut gist = (*state).clone();
+									gist.file.delete_item(idx);
+									state.set(gist);
+								})
+							}}
+						/>
+					}).collect::<Vec<_>>()}
+				</div>
 			</Container>
 		</Section>
 		<ItemModal item={(*item_open_for_edit).clone()} on_close={save_edited_item} />
 	</>}
+}
+
+#[derive(Properties, PartialEq)]
+pub struct ItemCardProps {
+	pub idx: usize,
+	pub item: Item,
+	pub on_edit: Callback<usize>,
+	pub on_delete: Callback<usize>,
+}
+
+#[function_component]
+pub fn ItemCard(props: &ItemCardProps) -> Html {
+	html! {
+		<div class={"card"}>
+			<CardHeader>
+				<p class="card-header-title">{&props.item.name}</p>
+				<Button classes={"card-header-icon has-text-danger"} onclick={{
+					let idx = props.idx;
+					props.on_delete.reform(move |_| idx)
+				}}><Icon size={Size::Small}><i class="fas fa-trash" /></Icon></Button>
+			</CardHeader>
+			<CardContent>
+				<Content>
+					{&props.item.description}
+				</Content>
+			</CardContent>
+			<CardFooter>
+				<Button classes={"card-footer-item"} onclick={{
+					let idx = props.idx;
+					props.on_edit.reform(move |_| idx)
+				}}>{"Edit"}</Button>
+			</CardFooter>
+		</div>
+	}
 }

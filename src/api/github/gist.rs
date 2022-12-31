@@ -1,8 +1,12 @@
 use super::query_rest;
-use crate::{page::Route, session::Profile};
+use crate::{components::wishlist::item::Item, page::Route, session::Profile};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, ops::Deref, str::FromStr};
+use std::{
+	collections::{BTreeSet, HashMap},
+	ops::Deref,
+	str::FromStr,
+};
 use yew::html::IntoPropValue;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -373,10 +377,42 @@ impl GistDocument for AppUserData {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct List {
 	pub name: String,
+	pub items: Vec<Item>,
+	pub all_item_tags: BTreeSet<String>,
 }
 impl List {
 	pub fn new(name: impl Into<String>) -> Self {
-		Self { name: name.into() }
+		Self {
+			name: name.into(),
+			items: Vec::new(),
+			all_item_tags: BTreeSet::new(),
+		}
+	}
+
+	pub fn update_or_insert_item(&mut self, idx: Option<usize>, item: Item) {
+		let mut item_tags = item.tags.clone();
+		match idx {
+			Some(idx) => {
+				*self.items.get_mut(idx).unwrap() = item;
+			}
+			None => {
+				self.items.push(item);
+			}
+		}
+		self.all_item_tags.append(&mut item_tags);
+	}
+
+	pub fn delete_item(&mut self, idx: usize) {
+		let _ = self.items.remove(idx);
+		self.rebuild_tags();
+	}
+
+	fn rebuild_tags(&mut self) {
+		self.all_item_tags.clear();
+		for item in &self.items {
+			let mut tags = item.tags.clone();
+			self.all_item_tags.append(&mut tags);
+		}
 	}
 }
 impl GistDocument for List {
@@ -407,6 +443,10 @@ impl GistDocument for List {
 			.as_string()
 			.expect("value for name node is not a string")
 			.to_owned();
-		Ok(Self { name })
+		Ok(Self {
+			name,
+			items: Vec::new(),
+			all_item_tags: BTreeSet::new(),
+		})
 	}
 }

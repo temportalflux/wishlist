@@ -52,8 +52,12 @@ pub fn ItemModal(props: &ItemModalProps) -> Html {
 		let state = state.clone();
 		Callback::from(move |_| {
 			let new_tag = (*custom_tag_text).clone();
-			custom_tag_text.set(String::new());
-			mutate(&state, move |item| {item.tags.insert(new_tag);});
+			if !new_tag.is_empty() {
+				custom_tag_text.set(String::new());
+				mutate(&state, move |item| {
+					item.tags.insert(new_tag);
+				});
+			}
 		})
 	};
 
