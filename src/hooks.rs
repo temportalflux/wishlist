@@ -7,6 +7,10 @@ pub struct AsyncHandle<T, E> {
 	run: Rc<dyn Fn()>,
 }
 impl<T, E> AsyncHandle<T, E> {
+	pub fn trigger(&self) -> &Rc<dyn Fn()> {
+		&self.run
+	}
+
 	pub fn run(&self) {
 		(*self.run)();
 	}

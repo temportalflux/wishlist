@@ -428,25 +428,66 @@ impl GistDocument for List {
 		let mut doc = kdl::KdlDocument::new();
 		doc.nodes_mut().push({
 			let mut node = kdl::KdlNode::new("name");
-			node.entries_mut()
-				.push(kdl::KdlEntry::new(self.name.clone()));
+			node.push(self.name.clone());
+			node
+		});
+		doc.nodes_mut().push({
+			let mut node = kdl::KdlNode::new("items");
+			node.set_children({
+				let mut doc = kdl::KdlDocument::new();
+				for item in &self.items {
+					doc.nodes_mut().push(item.clone().into());
+				}
+				doc
+			});
 			node
 		});
 		doc
 	}
 
 	fn from_kdl(doc: &kdl::KdlDocument) -> anyhow::Result<Self> {
-		let name = doc.get("name").expect("missing name node");
-		let name = name.get(0).expect("missing value for name node");
-		let name = name
-			.value()
-			.as_string()
-			.expect("value for name node is not a string")
-			.to_owned();
+		use KdlParseError::*;
+		let name = {
+			let node = doc.get("name").ok_or(NoNode("name"))?;
+			let entry = node.get(0).ok_or(NoArgument("name", 0))?;
+			entry
+				.value()
+				.as_string()
+				.ok_or(InvalidArgValue("name", 0, "string"))?
+		}
+		.to_owned();
+		let mut items = Vec::new();
+		let mut all_item_tags = BTreeSet::new();
+		let items_root = doc.get("items").ok_or(NoNode("items"))?;
+		let item_nodes = items_root.children().ok_or(NoChildrenOf("items".into()))?;
+		for node in item_nodes.nodes() {
+			if node.name().value() != "item" {
+				continue;
+			}
+			let item = Item::try_from(node)?;
+			all_item_tags.append(&mut item.tags.clone());
+			items.push(item);
+		}
 		Ok(Self {
 			name,
-			items: Vec::new(),
-			all_item_tags: BTreeSet::new(),
+			items,
+			all_item_tags,
 		})
 	}
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum KdlParseError {
+	#[error("Missing node at \"{0}\"")]
+	NoNode(&'static str),
+	#[error("Missing argument in \"{0}\" at index \"{1}\"")]
+	NoArgument(&'static str, usize),
+	#[error("Invalid value in \"{0}\" at argument \"{1}\", expected \"{2}\"")]
+	InvalidArgValue(&'static str, usize, &'static str),
+	#[error("Missing property in \"{0}\" at key \"{1}\"")]
+	NoProperty(&'static str, &'static str),
+	#[error("Invalid value in \"{0}\" at argument \"{1}\", expected \"{2}\"")]
+	InvalidPropValue(&'static str, &'static str, &'static str),
+	#[error("Missing children of \"{0}\"")]
+	NoChildrenOf(String),
 }

@@ -50,6 +50,19 @@ pub fn Page(props: &PageProps) -> Html {
 		}
 		fetch
 	};
+	let save = {
+		let handle = (state.clone(), saved.clone());
+		use_async(false, move || {
+			let (state, saved) = handle.clone();
+			Box::pin(async move {
+				let mut gist = (*state).clone();
+				gist.save().await?;
+				state.set(gist.clone());
+				saved.set(gist);
+				Ok(()) as anyhow::Result<()>
+			})
+		})
+	};
 	if state.id.is_none() || fetch.loading {
 		return html! {
 			<Container>
@@ -71,16 +84,45 @@ pub fn Page(props: &PageProps) -> Html {
 		})
 	};
 
-	let mut save_changes_notif_classes = classes! {"m-5"};
-	if *state == *saved {
-		save_changes_notif_classes.push("is-hidden");
-	}
+	let has_changes = *state != *saved;
+	let changes_notification = {
+		let mut classes = classes! {"m-5"};
+		if !has_changes {
+			classes.push("is-hidden");
+		}
+		let save_changes = {
+			let save_async = save.trigger().clone();
+			Callback::from(move |_| {
+				save_async();
+			})
+		};
+		let content = match (has_changes, save.loading) {
+			(_, true) => html! {<>
+				<Icon size={ybc::Size::Large}>
+					<i class="fas fa-circle-notch fa-spin" />
+				</Icon>
+				<span>{"Saving Changes"}</span>
+			</>},
+			(true, false) => html! {<>
+				{"You have unsaved changes to your wishlist!"}
+				<br />
+				<Button classes={"is-primary"} onclick={save_changes}>{"Save Changes"}</Button>
+			</>},
+			(false, _) => html! {},
+		};
+		html! {
+			<div class={classes}>
+				<Notification classes={"is-success is-light"}>
+					<Content classes="has-text-centered">
+						{content}
+					</Content>
+				</Notification>
+			</div>
+		}
+	};
 
 	let delete_wishlist = Callback::from(|_| {
 		log::debug!("TODO: Prompt delete modal");
-	});
-	let save_changes = Callback::from(|_| {
-		log::debug!("TODO: Save to gists");
 	});
 
 	let create_item = {
@@ -134,15 +176,7 @@ pub fn Page(props: &PageProps) -> Html {
 					</Button>
 				</div>
 			</Container>
-			<div class={save_changes_notif_classes}>
-				<Notification classes={"is-success is-light"}>
-					<Content classes="has-text-centered">
-						{"You have unsaved changes to your wishlist!"}
-						<br />
-						<Button classes={"is-primary"} onclick={save_changes}>{"Save Changes"}</Button>
-					</Content>
-				</Notification>
-			</div>
+			{changes_notification}
 			<Tags classes={"is-justify-content-center are-medium"}>
 				{tag_filters}
 			</Tags>

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, str::FromStr};
 
 /// A wish/gift idea on a wishlist.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -53,6 +53,7 @@ pub struct Specific {
 #[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Idea {
 	pub image_url: Option<String>,
+	pub estimated_cost: f32,
 	pub example_urls: Vec<String>,
 }
 
@@ -110,6 +111,18 @@ impl KindName {
 		}
 	}
 }
+impl FromStr for KindName {
+	type Err = ();
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Specific" => Ok(Self::Specific),
+			"Idea" => Ok(Self::Idea),
+			"Bundle" => Ok(Self::Bundle),
+			_ => Err(()),
+		}
+	}
+}
 
 impl Item {
 	pub fn set_quantity_from_text((item, text): (&mut Self, String)) {
@@ -124,5 +137,310 @@ impl Item {
 
 	pub fn inc_quantity((item, _): (&mut Self, web_sys::MouseEvent)) {
 		item.quantity = item.quantity.saturating_add(1);
+	}
+}
+
+impl Into<kdl::KdlNode> for Item {
+	fn into(self) -> kdl::KdlNode {
+		/*
+		item "Display Name" {
+			description "Long Desc"
+			quantity 42
+			tags "Home" "D&D" "Kitchen" "Books" "Travel"
+			kind "Specific" {
+				image_url "https://.../img.png"
+				offer_url "https://amazon.com/..."
+				cost_per_unit 49.99
+			}
+		}
+		item "Egg Flowers Framed Poster" {
+			description "A framed poster"
+			quantity 1
+			tags "Home"
+			kind "Bundle" {
+				item "Egg Flowers Poster" {
+					description "Egg Flowers Kurzgesagt poster"
+					quantity 1
+					kind "Specific" {
+						image_url "..."
+						offer_url "..."
+						cost_per_unit 24.90
+					}
+				}
+				item "Small Frame" {
+					description "18x24 poster frame"
+					quantity 1
+					kind "Idea" {
+						image_url "..."
+						estimated_cost 30
+						example_urls {
+							"https://amazon.com/..."
+						}
+					}
+				}
+			}
+		}
+		*/
+		let mut node = kdl::KdlNode::new("item");
+		node.push(self.name);
+		node.set_children({
+			let mut doc = kdl::KdlDocument::new();
+			doc.nodes_mut().push({
+				let mut node = kdl::KdlNode::new("description");
+				node.push(self.description);
+				node
+			});
+			doc.nodes_mut().push({
+				let mut node = kdl::KdlNode::new("quantity");
+				node.push(self.quantity as i64);
+				node
+			});
+			if !self.tags.is_empty() {
+				doc.nodes_mut().push({
+					let mut node = kdl::KdlNode::new("tags");
+					for tag in self.tags {
+						node.push(tag);
+					}
+					node
+				});
+			}
+			doc.nodes_mut().push(self.kind.into());
+			doc
+		});
+		node
+	}
+}
+
+impl Into<kdl::KdlNode> for Kind {
+	fn into(self) -> kdl::KdlNode {
+		let mut node = kdl::KdlNode::new("kind");
+		node.push({
+			let mut entry = kdl::KdlEntry::new(self.name().value());
+			entry.set_ty("KindName");
+			entry
+		});
+		node.set_children({
+			let mut doc = kdl::KdlDocument::new();
+			match self {
+				Kind::Specific(value) => {
+					if let Some(image_url) = value.image_url {
+						doc.nodes_mut().push({
+							let mut node = kdl::KdlNode::new("image_url");
+							node.push(image_url);
+							node
+						});
+					}
+					doc.nodes_mut().push({
+						let mut node = kdl::KdlNode::new("offer_url");
+						node.push(value.offer_url);
+						node
+					});
+					doc.nodes_mut().push({
+						let mut node = kdl::KdlNode::new("cost_per_unit");
+						node.push(value.cost_per_unit as f64);
+						node
+					});
+				}
+				Kind::Idea(value) => {
+					if let Some(image_url) = value.image_url {
+						doc.nodes_mut().push({
+							let mut node = kdl::KdlNode::new("image_url");
+							node.push(image_url);
+							node
+						});
+					}
+					doc.nodes_mut().push({
+						let mut node = kdl::KdlNode::new("estimated_cost");
+						node.push(value.estimated_cost as f64);
+						node
+					});
+					if !value.example_urls.is_empty() {
+						doc.nodes_mut().push({
+							let mut node = kdl::KdlNode::new("example_urls");
+							node.set_children({
+								let mut doc = kdl::KdlDocument::new();
+								for url in value.example_urls {
+									doc.nodes_mut().push(kdl::KdlNode::new(url));
+								}
+								doc
+							});
+							node
+						});
+					}
+				}
+				Kind::Bundle(value) => {
+					for item in value.entries {
+						doc.nodes_mut().push(item.into());
+					}
+				}
+			}
+			doc
+		});
+		node
+	}
+}
+
+impl TryFrom<&kdl::KdlNode> for Item {
+	type Error = anyhow::Error;
+
+	fn try_from(node: &kdl::KdlNode) -> Result<Self, Self::Error> {
+		use crate::api::github::gist::KdlParseError::*;
+		let name = {
+			let entry = node.get(0).ok_or(NoArgument("name", 0))?;
+			entry
+				.value()
+				.as_string()
+				.ok_or(InvalidArgValue("name", 0, "string"))?
+		}
+		.to_owned();
+		let children = node
+			.children()
+			.ok_or(NoChildrenOf(node.name().value().into()))?;
+		let description = {
+			let node = children
+				.get("description")
+				.ok_or(NoNode("item::description"))?;
+			let entry = node.get(0).ok_or(NoArgument("item::description", 0))?;
+			entry
+				.value()
+				.as_string()
+				.ok_or(InvalidArgValue("item::description", 0, "string"))?
+		}
+		.to_owned();
+		let quantity = {
+			let node = children.get("quantity").ok_or(NoNode("item::quantity"))?;
+			let entry = node.get(0).ok_or(NoArgument("item::quantity", 0))?;
+			entry
+				.value()
+				.as_i64()
+				.ok_or(InvalidArgValue("item::quantity", 0, "i64"))?
+		} as usize;
+		let tags = match children.get("tags") {
+			Some(node) => node
+				.entries()
+				.iter()
+				.filter_map(|entry| entry.value().as_string())
+				.map(str::to_owned)
+				.collect(),
+			None => Default::default(),
+		};
+		let kind = {
+			let node = children.get("kind").ok_or(NoNode("item::kind"))?;
+			Kind::try_from(node)?
+		};
+		Ok(Self {
+			name,
+			description,
+			quantity,
+			tags,
+			kind,
+		})
+	}
+}
+
+impl TryFrom<&kdl::KdlNode> for Kind {
+	type Error = anyhow::Error;
+
+	fn try_from(node: &kdl::KdlNode) -> Result<Self, Self::Error> {
+		use crate::api::github::gist::KdlParseError::*;
+		let entry = node.get(0).ok_or(NoArgument("kind", 0))?;
+		let kind_name_str = entry
+			.value()
+			.as_string()
+			.ok_or(InvalidArgValue("kind", 0, "string"))?;
+		let kind_name = KindName::from_str(kind_name_str)
+			.map_err(|_| InvalidArgValue("kind", 0, "wishlist::KindName"))?;
+		let doc = node.children().ok_or(NoChildrenOf("kind".into()))?;
+		Ok(match kind_name {
+			KindName::Specific => {
+				let image_url = match doc.get("image_url") {
+					Some(node) => {
+						let entry = node.get(0).ok_or(NoArgument("kind::image_url", 0))?;
+						let value = entry.value().as_string().ok_or(InvalidArgValue(
+							"kind::image_url",
+							0,
+							"string",
+						))?;
+						Some(value.to_owned())
+					}
+					None => None,
+				};
+				let offer_url = {
+					let node = doc.get("offer_url").ok_or(NoNode("kind::offer_url"))?;
+					let entry = node.get(0).ok_or(NoArgument("kind::offer_url", 0))?;
+					let value = entry.value().as_string().ok_or(InvalidArgValue(
+						"kind::offer_url",
+						0,
+						"string",
+					))?;
+					value.to_owned()
+				};
+				let cost_per_unit = {
+					let node = doc
+						.get("cost_per_unit")
+						.ok_or(NoNode("kind::cost_per_unit"))?;
+					let entry = node.get(0).ok_or(NoArgument("kind::cost_per_unit", 0))?;
+					entry.value().as_f64().ok_or(InvalidArgValue(
+						"kind::cost_per_unit",
+						0,
+						"f64",
+					))?
+				} as f32;
+				Self::Specific(Specific {
+					image_url,
+					offer_url,
+					cost_per_unit,
+				})
+			}
+			KindName::Idea => {
+				let image_url = match doc.get("image_url") {
+					Some(node) => {
+						let entry = node.get(0).ok_or(NoArgument("kind::image_url", 0))?;
+						let value = entry.value().as_string().ok_or(InvalidArgValue(
+							"kind::image_url",
+							0,
+							"string",
+						))?;
+						Some(value.to_owned())
+					}
+					None => None,
+				};
+				let estimated_cost = {
+					let node = doc
+						.get("estimated_cost")
+						.ok_or(NoNode("kind::estimated_cost"))?;
+					let entry = node.get(0).ok_or(NoArgument("kind::estimated_cost", 0))?;
+					entry.value().as_f64().ok_or(InvalidArgValue(
+						"kind::estimated_cost",
+						0,
+						"f64",
+					))?
+				} as f32;
+				let example_urls = match doc.get("example_urls") {
+					Some(node) => {
+						let doc = node
+							.children()
+							.ok_or(NoChildrenOf("kind::example_urls".into()))?;
+						doc.nodes()
+							.iter()
+							.map(|node| node.name().value().to_owned())
+							.collect()
+					}
+					None => Vec::new(),
+				};
+				Self::Idea(Idea {
+					image_url,
+					estimated_cost,
+					example_urls,
+				})
+			}
+			KindName::Bundle => {
+				let mut entries = Vec::new();
+				for node in doc.nodes() {
+					entries.push(Item::try_from(node)?);
+				}
+				Self::Bundle(Bundle { entries })
+			}
+		})
 	}
 }
