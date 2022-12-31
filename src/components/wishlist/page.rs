@@ -158,6 +158,7 @@ pub fn Page(props: &PageProps) -> Html {
 		}
 	};
 
+	// TODO: Use a Level for the header of the wishlist instead of manual flexgrid
 	html! {<>
 		<Section>
 			<Container classes={"is-flex is-flex-grow-1 is-flex-shrink-0"}>
