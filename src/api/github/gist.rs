@@ -389,20 +389,7 @@ impl List {
 		}
 	}
 
-	pub fn update_or_insert_item(&mut self, idx: Option<usize>, item: Item) {
-		let mut item_tags = item.tags.clone();
-		match idx {
-			Some(idx) => {
-				*self.items.get_mut(idx).unwrap() = item;
-			}
-			None => {
-				self.items.push(item);
-			}
-		}
-		self.all_item_tags.append(&mut item_tags);
-	}
-
-	fn rebuild_tags(&mut self) {
+	pub fn rebuild_tags(&mut self) {
 		self.all_item_tags.clear();
 		for item in &self.items {
 			let mut tags = item.tags.clone();

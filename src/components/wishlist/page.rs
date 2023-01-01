@@ -55,6 +55,7 @@ pub fn Page(props: &PageProps) -> Html {
 	let state = use_state(|| gist::Gist::<gist::List>::default());
 	let saved = use_state(|| gist::Gist::<gist::List>::default());
 	let item_path = use_state(|| VecDeque::<usize>::new());
+	let tags_changed = use_state(|| false);
 
 	let fetch = {
 		let handle = (state.clone(), saved.clone());
@@ -108,6 +109,13 @@ pub fn Page(props: &PageProps) -> Html {
 				</ybc::Box>
 			</Container>
 		};
+	}
+
+	if *tags_changed {
+		let mut gist = (*state).clone();
+		gist.file.rebuild_tags();
+		state.set(gist);
+		tags_changed.set(false);
 	}
 
 	let copy_link_to_clipboard = {
@@ -223,6 +231,10 @@ pub fn Page(props: &PageProps) -> Html {
 					<ItemPage {item} {mutator}
 						path_to_item={(*item_path).clone()}
 						on_set_path={set_current_path.clone()}
+						on_tags_changed={{
+							let tags_changed = tags_changed.clone();
+							Callback::from(move |_| tags_changed.set(true))
+						}}
 					/>
 				</>}
 			}
@@ -329,6 +341,7 @@ pub struct ItemPageProps {
 	pub mutator: Mutator,
 	pub path_to_item: VecDeque<usize>,
 	pub on_set_path: Callback<VecDeque<usize>>,
+	pub on_tags_changed: Callback<()>,
 }
 
 #[function_component]
@@ -339,7 +352,8 @@ pub fn ItemPage(props: &ItemPageProps) -> Html {
 			mutator={props.mutator.clone()}
 			path_to_item={props.path_to_item.clone()}
 			on_set_path={props.on_set_path.clone()}
-			can_bundle=true
+			on_tags_changed={props.on_tags_changed.clone()}
+			can_bundle={props.path_to_item.len() <= 1}
 		/>
 	}
 }
@@ -351,6 +365,7 @@ pub struct ItemDataProps {
 	path_to_item: VecDeque<usize>,
 	can_bundle: bool,
 	on_set_path: Callback<VecDeque<usize>>,
+	on_tags_changed: Callback<()>,
 }
 
 #[function_component]
@@ -361,13 +376,15 @@ pub fn ItemData(
 		path_to_item,
 		can_bundle,
 		on_set_path,
+		on_tags_changed,
 	}: &ItemDataProps,
 ) -> Html {
 	let custom_tag_text = use_state_eq(|| String::new());
 
 	let add_custom_tag = {
 		let custom_tag_text = custom_tag_text.clone();
-		let apply_tag = mutator.reduce(|item, new_tag| {
+		let on_tags_changed = on_tags_changed.clone();
+		let apply_tag = mutator.reduce(move |item, new_tag| {
 			item.tags.insert(new_tag);
 		});
 		Callback::from(move |_| {
@@ -375,8 +392,68 @@ pub fn ItemData(
 			if !new_tag.is_empty() {
 				custom_tag_text.set(String::new());
 				apply_tag.emit(new_tag);
+				on_tags_changed.emit(());
 			}
 		})
+	};
+
+	let tag_elements = match can_bundle {
+		false => html! {},
+		true => html! {<>
+			<Control><label class="label">{"Tags"}</label></Control>
+			<Field addons=true>
+				<Control>
+					<input
+						class="input is-small"
+						name="custom_tag"
+						value={(*custom_tag_text).clone()}
+						oninput={{
+							let custom_tag_text = custom_tag_text.clone();
+							Callback::from(move |ev: web_sys::InputEvent| {
+								let input: web_sys::HtmlInputElement = ev.target_dyn_into().expect_throw("event target should be an input");
+								custom_tag_text.set(input.value());
+							})
+						}}
+						onkeypress={{
+							let add_custom_tag = add_custom_tag.clone();
+							Callback::from(move |ev: web_sys::KeyboardEvent| {
+								if ev.key() == "Enter" {
+									add_custom_tag.emit(());
+								}
+							})
+						}}
+					/>
+				</Control>
+				<Control>
+					<Button classes={"is-small"} onclick={add_custom_tag.reform(|_| {})}>
+						<Icon size={ybc::Size::Small}><i class="fas fa-plus" /></Icon>
+						<span>{"Add Tag"}</span>
+					</Button>
+				</Control>
+			</Field>
+			<Field grouped=true multiline=true>
+				{item.tags.iter().map(|tag| {
+					html! {
+						<Control>
+							<Tags has_addons=true>
+								<Tag>{tag}</Tag>
+								<Tag classes={"is-delete"} onclick={{
+									let tag = tag.clone();
+									let on_tags_changed = on_tags_changed.clone();
+									let rm_tag = mutator.reduce(move |item, _| {
+										item.tags.remove(&tag);
+									});
+									Callback::from(move |_| {
+										rm_tag.emit(());
+										on_tags_changed.emit(());
+									})
+								}} />
+							</Tags>
+						</Control>
+					}
+				}).collect::<Vec<_>>()}
+			</Field>
+		</>},
 	};
 
 	let kind_options = {
@@ -454,52 +531,7 @@ pub fn ItemData(
 			</Control>
 		</Field>
 		<Control><label class="help">{"How many can be reserved?"}</label></Control>
-		<Control><label class="label">{"Tags"}</label></Control>
-		<Field addons=true>
-			<Control>
-				<input
-					class="input is-small"
-					name="custom_tag"
-					value={(*custom_tag_text).clone()}
-					oninput={{
-						let custom_tag_text = custom_tag_text.clone();
-						Callback::from(move |ev: web_sys::InputEvent| {
-							let input: web_sys::HtmlInputElement = ev.target_dyn_into().expect_throw("event target should be an input");
-							custom_tag_text.set(input.value());
-						})
-					}}
-					onkeypress={{
-						let add_custom_tag = add_custom_tag.clone();
-						Callback::from(move |ev: web_sys::KeyboardEvent| {
-							if ev.key() == "Enter" {
-								add_custom_tag.emit(());
-							}
-						})
-					}}
-				/>
-			</Control>
-			<Control>
-				<Button classes={"is-small"} onclick={add_custom_tag.reform(|_| {})}>
-					<Icon size={ybc::Size::Small}><i class="fas fa-plus" /></Icon>
-					<span>{"Add Tag"}</span>
-				</Button>
-			</Control>
-		</Field>
-		<Field grouped=true multiline=true>
-			{item.tags.iter().map(|tag| {
-				html! {
-					<Control>
-						<Tags has_addons=true>
-							<Tag>{tag}</Tag>
-							<Tag classes={"is-delete"} onclick={{
-								let tag = tag.clone();
-								mutator.reduce(move |item, _| { item.tags.remove(&tag); })
-							}} />
-						</Tags>
-					</Control>
-				}
-			}).collect::<Vec<_>>()}
-		</Field>
+		{tag_elements}
 		<Field label={"Kind"} help={"What type of gift idea is this?"}>
 			<Control>
 				<Select name="kind" value={item.kind.name().value().to_owned()}
