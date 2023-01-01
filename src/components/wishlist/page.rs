@@ -219,6 +219,23 @@ pub fn Page(props: &PageProps) -> Html {
 		Callback::from(move |path| item_path.set(path))
 	};
 
+	let item_cards = html! {<>
+		{state.file.items.iter().enumerate().map(|(idx, item)| html! {
+			<ItemCard item={item.clone()} path_to_item={VecDeque::from([idx])}
+				on_edit={set_current_path.clone()}
+				on_delete={{
+					let state = state.clone();
+					Callback::from(move |_| {
+						// TODO: Prompt delete modal
+						let mut gist = (*state).clone();
+						gist.file.remove_item(idx);
+						state.set(gist);
+					})
+				}}
+			/>
+		}).collect::<Vec<_>>()}
+	</>};
+
 	let page_content = {
 		let path_indices = (*item_path).clone();
 		let path_count = path_indices.len();
@@ -234,10 +251,23 @@ pub fn Page(props: &PageProps) -> Html {
 			}).collect::<Vec<_>>()
 		};
 		let item = get_current_item(&mut (*state).clone(), &item_path).cloned();
-		match item {
-			Some(item) => {
+		let (sidebar, core, post) = match item {
+			Some(item) => (
+				html! { {item_cards} },
 				html! {<>
-					{"Path: "}<ybc::Breadcrumb>{path_segments}</ybc::Breadcrumb>
+					<Level>
+						<LevelLeft>
+							<LevelItem><ybc::Breadcrumb>{path_segments}</ybc::Breadcrumb></LevelItem>
+						</LevelLeft>
+						<LevelRight>
+							<LevelItem>
+								<Button onclick={{
+									let item_path = item_path.clone();
+									Callback::from(move |_| item_path.set(Default::default()))
+								}}>{"Close Item"}</Button>
+							</LevelItem>
+						</LevelRight>
+					</Level>
 					<ItemData {item} {mutator}
 						path_to_item={(*item_path).clone()}
 						on_set_path={set_current_path.clone()}
@@ -247,12 +277,37 @@ pub fn Page(props: &PageProps) -> Html {
 						}}
 						can_bundle={item_path.len() <= 1}
 					/>
-				</>}
-			}
-			None => html! {<>
-				<h3 class={"subtitle is-justify-content-center"} style="display: flex;">{"No selected item"}</h3>
-			</>},
-		}
+				</>},
+				html! {},
+			),
+			None => (
+				html! {},
+				html! {},
+				html! {
+					<div class={"content"} style={"display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); grid-gap: 0.5em;"}>
+						{item_cards}
+					</div>
+				},
+			),
+		};
+		html! {<>
+			<Columns>
+				<Column classes="is-2">
+					<Content>
+						<Button classes={"is-primary is-fullwidth"} onclick={create_item}>
+							<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
+							<span>{"New Item"}</span>
+						</Button>
+					</Content>
+					{sidebar}
+				</Column>
+				<Column>
+					<Tags classes={"is-justify-content-center are-medium"}>{tag_filters}</Tags>
+					{core}
+				</Column>
+			</Columns>
+			{post}
+		</>}
 	};
 
 	html! {<>
@@ -280,34 +335,7 @@ pub fn Page(props: &PageProps) -> Html {
 					</LevelItem>
 				</LevelRight>
 			</Level>
-			<Columns>
-				<Column classes="is-2">
-					<Content>
-						<Button classes={"is-primary is-fullwidth"} onclick={create_item}>
-							<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
-							<span>{"New Item"}</span>
-						</Button>
-					</Content>
-					{state.file.items.iter().enumerate().map(|(idx, item)| html! {
-						<ItemCard item={item.clone()} path_to_item={VecDeque::from([idx])}
-							on_edit={set_current_path.clone()}
-							on_delete={{
-								let state = state.clone();
-								Callback::from(move |_| {
-									// TODO: Prompt delete modal
-									let mut gist = (*state).clone();
-									gist.file.remove_item(idx);
-									state.set(gist);
-								})
-							}}
-						/>
-					}).collect::<Vec<_>>()}
-				</Column>
-				<Column>
-					<Tags classes={"is-justify-content-center are-medium"}>{tag_filters}</Tags>
-					{page_content}
-				</Column>
-			</Columns>
+			{page_content}
 		</Section>
 	</>}
 }
