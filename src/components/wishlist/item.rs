@@ -1,5 +1,56 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, str::FromStr};
+use std::{collections::{BTreeSet, VecDeque}, str::FromStr};
+
+pub trait ItemContainer {
+	fn get_items(&self) -> Option<&Vec<Item>>;
+	fn get_items_mut(&mut self) -> Option<&mut Vec<Item>>;
+	
+	fn get_item(&self, idx: usize) -> Option<&Item> {
+		match self.get_items() {
+			Some(items) => items.get(idx),
+			None => None,
+		}
+	}
+	
+	fn get_item_mut(&mut self, idx: usize) -> Option<&mut Item> {
+		match self.get_items_mut() {
+			Some(items) => items.get_mut(idx),
+			None => None,
+		}
+	}
+
+	fn get_item_mut_at(&mut self, mut path: VecDeque<usize>) -> Option<&mut Item> {
+		match path.pop_front() {
+			Some(idx) => match self.get_item_mut(idx) {
+				Some(item) => match path.is_empty() {
+					true => Some(item),
+					false => item.get_item_mut_at(path),
+				}
+				None => None,
+			}
+			None => None,
+		}
+	}
+
+	fn get_items_for(&self, path: VecDeque<usize>) -> Vec<(VecDeque<usize>, &Item)> where Self: Sized {
+		let mut container: &dyn ItemContainer = self;
+		let mut items = Vec::with_capacity(path.len());
+		let mut item_path = VecDeque::with_capacity(path.len());
+		for idx in path {
+			let Some(item) = container.get_item(idx) else { break; };
+			container = &*item;
+			item_path.push_back(idx);
+			items.push((item_path.clone(), item));
+		}
+		items
+	}
+
+	fn remove_item(&mut self, idx: usize) {
+		if let Some(items) = self.get_items_mut() {
+			items.remove(idx);
+		}
+	}
+}
 
 /// A wish/gift idea on a wishlist.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -125,18 +176,33 @@ impl FromStr for KindName {
 }
 
 impl Item {
-	pub fn set_quantity_from_text((item, text): (&mut Self, String)) {
+	pub fn set_quantity_from_text(&mut self, text: String) {
 		if let Ok(value) = text.parse::<usize>() {
-			item.quantity = value.max(1);
+			self.quantity = value.max(1);
 		}
 	}
 
-	pub fn dec_quantity((item, _): (&mut Self, web_sys::MouseEvent)) {
-		item.quantity = item.quantity.saturating_sub(1).max(1);
+	pub fn dec_quantity(&mut self, _: web_sys::MouseEvent) {
+		self.quantity = self.quantity.saturating_sub(1).max(1);
 	}
 
-	pub fn inc_quantity((item, _): (&mut Self, web_sys::MouseEvent)) {
-		item.quantity = item.quantity.saturating_add(1);
+	pub fn inc_quantity(&mut self, _: web_sys::MouseEvent) {
+		self.quantity = self.quantity.saturating_add(1);
+	}
+}
+impl ItemContainer for Item {
+	fn get_items(&self) -> Option<&Vec<Item>> {
+		match &self.kind {
+			Kind::Bundle(bundle) => Some(&bundle.entries),
+			_ => None,
+		}
+	}
+
+	fn get_items_mut(&mut self) -> Option<&mut Vec<Item>> {
+		match &mut self.kind {
+			Kind::Bundle(bundle) => Some(&mut bundle.entries),
+			_ => None,
+		}
 	}
 }
 

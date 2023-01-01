@@ -402,17 +402,26 @@ impl List {
 		self.all_item_tags.append(&mut item_tags);
 	}
 
-	pub fn delete_item(&mut self, idx: usize) {
-		let _ = self.items.remove(idx);
-		self.rebuild_tags();
-	}
-
 	fn rebuild_tags(&mut self) {
 		self.all_item_tags.clear();
 		for item in &self.items {
 			let mut tags = item.tags.clone();
 			self.all_item_tags.append(&mut tags);
 		}
+	}
+}
+impl crate::components::wishlist::item::ItemContainer for List {
+	fn get_items(&self) -> Option<&Vec<Item>> {
+		Some(&self.items)
+	}
+	
+	fn get_items_mut(&mut self) -> Option<&mut Vec<Item>> {
+		Some(&mut self.items)
+	}
+
+	fn remove_item(&mut self, idx: usize) {
+		let _ = self.items.remove(idx);
+		self.rebuild_tags();
 	}
 }
 impl GistDocument for List {
