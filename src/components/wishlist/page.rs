@@ -238,13 +238,14 @@ pub fn Page(props: &PageProps) -> Html {
 			Some(item) => {
 				html! {<>
 					{"Path: "}<ybc::Breadcrumb>{path_segments}</ybc::Breadcrumb>
-					<ItemPage {item} {mutator}
+					<ItemData {item} {mutator}
 						path_to_item={(*item_path).clone()}
 						on_set_path={set_current_path.clone()}
 						on_tags_changed={{
 							let tags_changed = tags_changed.clone();
 							Callback::from(move |_| tags_changed.set(true))
 						}}
+						can_bundle={item_path.len() <= 1}
 					/>
 				</>}
 			}
@@ -343,29 +344,6 @@ pub fn ItemCard(props: &ItemCardProps) -> Html {
 			</CardFooter>
 		</div>
 	</Content>}
-}
-
-#[derive(Properties, PartialEq)]
-pub struct ItemPageProps {
-	pub item: Item,
-	pub mutator: Mutator,
-	pub path_to_item: VecDeque<usize>,
-	pub on_set_path: Callback<VecDeque<usize>>,
-	pub on_tags_changed: Callback<()>,
-}
-
-#[function_component]
-pub fn ItemPage(props: &ItemPageProps) -> Html {
-	html! {
-		<ItemData
-			item={props.item.clone()}
-			mutator={props.mutator.clone()}
-			path_to_item={props.path_to_item.clone()}
-			on_set_path={props.on_set_path.clone()}
-			on_tags_changed={props.on_tags_changed.clone()}
-			can_bundle={props.path_to_item.len() <= 1}
-		/>
-	}
 }
 
 #[derive(Properties, PartialEq)]
@@ -480,8 +458,130 @@ pub fn ItemData(
 	};
 
 	let kind_section = match &item.kind {
-		item::Kind::Specific(_) => html! {},
-		item::Kind::Idea(_) => html! {},
+		item::Kind::Specific(item) => {
+			html! {<>
+				<Field label="Image">
+					<Control>
+						<Input
+							name="image_url" value={item.image_url.clone().unwrap_or_default()}
+							update={mutator.reduce(|item, value: String| {
+								let item::Kind::Specific(item) = &mut item.kind else { return; };
+								item.image_url = match value.is_empty() {
+									false => Some(value),
+									true => None,
+								};
+							})}
+							r#type={InputType::Text}
+						/>
+					</Control>
+				</Field>
+				<Field label="Offer">
+					<Control>
+						<Input
+							name="offer_url" value={item.offer_url.clone()}
+							update={mutator.reduce(|item, value: String| {
+								let item::Kind::Specific(item) = &mut item.kind else { return; };
+								item.offer_url = value;
+							})}
+							r#type={InputType::Text}
+						/>
+					</Control>
+				</Field>
+				<Field label="Cost (Per Unit)">
+					<Control>
+						<Input
+							name="cost_per_unit" value={item.cost_per_unit_str.clone()}
+							classes={{
+								let mut classes = classes!{};
+								if item.cost_per_unit_str.parse::<f32>().is_err() {
+									classes.push("is-danger");
+								}
+								classes
+							}}
+							update={mutator.reduce(|item, value: String| {
+								let item::Kind::Specific(item) = &mut item.kind else { return; };
+								if let Ok(cost) = value.parse::<f32>() {
+									item.cost_per_unit = cost;
+								}
+								item.cost_per_unit_str = value;
+							})}
+							r#type={InputType::Text}
+						/>
+					</Control>
+				</Field>
+			</>}
+		}
+		item::Kind::Idea(item) => html! {<>
+			<Field label="Image">
+				<Control>
+					<Input
+						name="image_url" value={item.image_url.clone().unwrap_or_default()}
+						update={mutator.reduce(|item, value: String| {
+							let item::Kind::Idea(item) = &mut item.kind else { return; };
+							item.image_url = match value.is_empty() {
+								false => Some(value),
+								true => None,
+							};
+						})}
+						r#type={InputType::Text}
+					/>
+				</Control>
+			</Field>
+			<Field label="Estimated Cost (Per Unit)">
+				<Control>
+					<Input
+						name="estimated_cost" value={item.estimated_cost_str.clone()}
+						classes={{
+							let mut classes = classes!{};
+							if item.estimated_cost_str.parse::<f32>().is_err() {
+								classes.push("is-danger");
+							}
+							classes
+						}}
+						update={mutator.reduce(|item, value: String| {
+							let item::Kind::Idea(item) = &mut item.kind else { return; };
+							if let Ok(cost) = value.parse::<f32>() {
+								item.estimated_cost = cost;
+							}
+							item.estimated_cost_str = value;
+						})}
+						r#type={InputType::Text}
+					/>
+				</Control>
+			</Field>
+			<Control><label class="label">{"Example Offers"}</label></Control>
+			<Control>
+				<Button classes={"is-primary"} onclick={mutator.reduce(|item, _| {
+					let item::Kind::Idea(item) = &mut item.kind else { return; };
+					item.example_urls.push(String::new());
+				})}>
+					<Icon size={ybc::Size::Small}><i class="fas fa-plus" /></Icon>
+					<span>{"Add Example"}</span>
+				</Button>
+			</Control>
+			{item.example_urls.iter().enumerate().map(|(idx, value)| html! {
+				<Field addons=true>
+					<Control>
+						<Button classes={"has-text-danger"} onclick={mutator.reduce(move |item, _| {
+							let item::Kind::Idea(item) = &mut item.kind else { return; };
+							item.example_urls.remove(idx);
+						})}>
+							<Icon size={ybc::Size::Small}><i class="fas fa-minus" /></Icon>
+						</Button>
+					</Control>
+					<Control classes={"is-flex-grow-1"}>
+						<Input
+							name={format!("{idx}")} value={value.clone()}
+							update={mutator.reduce(move |item, value: String| {
+								let item::Kind::Idea(item) = &mut item.kind else { return; };
+								*item.example_urls.get_mut(idx).unwrap() = value;
+							})}
+							r#type={InputType::Text}
+						/>
+					</Control>
+				</Field>
+			}).collect::<Vec<_>>()}
+		</>},
 		item::Kind::Bundle(bundle) => {
 			html! {<>
 				<div class={"content"} style={"display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); grid-gap: 0.5em;"}>

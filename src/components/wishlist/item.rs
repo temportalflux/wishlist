@@ -97,6 +97,7 @@ pub struct Specific {
 	pub image_url: Option<String>,
 	pub offer_url: String,
 	pub cost_per_unit: f32,
+	pub cost_per_unit_str: String,
 }
 
 /// Item properties which represent a generic idea or concept for a gift.
@@ -105,6 +106,7 @@ pub struct Specific {
 pub struct Idea {
 	pub image_url: Option<String>,
 	pub estimated_cost: f32,
+	pub estimated_cost_str: String,
 	pub example_urls: Vec<String>,
 }
 
@@ -456,6 +458,7 @@ impl TryFrom<&kdl::KdlNode> for Kind {
 					image_url,
 					offer_url,
 					cost_per_unit,
+					cost_per_unit_str: format!("{cost_per_unit:.2}"),
 				})
 			}
 			KindName::Idea => {
@@ -497,6 +500,7 @@ impl TryFrom<&kdl::KdlNode> for Kind {
 				Self::Idea(Idea {
 					image_url,
 					estimated_cost,
+					estimated_cost_str: format!("{estimated_cost:.2}"),
 					example_urls,
 				})
 			}
