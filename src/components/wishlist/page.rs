@@ -175,7 +175,17 @@ pub fn Page(props: &PageProps) -> Html {
 
 	let create_item = {
 		let item_path = item_path.clone();
-		Callback::from(move |_| item_path.set(Default::default()))
+		let state = state.clone();
+		Callback::from(move |_| {
+			let idx = {
+				let mut gist = (*state).clone();
+				let idx = gist.file.items.len();
+				gist.file.items.push(Item::default());
+				state.set(gist);
+				idx
+			};
+			item_path.set(VecDeque::from([idx]));
+		})
 	};
 
 	let tag_filters = match state.file.all_item_tags.is_empty() {
