@@ -1,16 +1,14 @@
-use std::collections::VecDeque;
 use crate::{
 	api::github::gist::{self, GistId},
-	components::wishlist::{
-		item::{self, Item, ItemContainer},
-	},
+	components::wishlist::item::{self, Item, ItemContainer},
 	hooks::use_async,
 };
+use std::collections::{HashMap, VecDeque};
 use wasm_bindgen::UnwrapThrowExt;
 use ybc::{
-	Button, CardContent, CardFooter, CardHeader, Column, Columns, Container, Content, Control,
-	Field, Icon, Input, InputType, Level, LevelItem, LevelLeft, LevelRight, Notification,
-	Section, Select, Size, Subtitle, Tag, Tags, TextArea, Title,
+	Button, CardContent, CardFooter, Column, Columns, Container, Content, Control,
+	Field, Icon, Input, InputType, Level, LevelItem, LevelLeft, LevelRight,
+	Notification, Section, Select, Size, Subtitle, Tag, Tags, TextArea, Title,
 };
 use yew::prelude::*;
 use yew_hooks::use_clipboard;
@@ -56,6 +54,14 @@ pub fn Page(props: &PageProps) -> Html {
 	let saved = use_state(|| gist::Gist::<gist::List>::default());
 	let item_path = use_state(|| VecDeque::<usize>::new());
 	let tags_changed = use_state(|| false);
+
+	let showing_wishlist_settings = use_state(|| false);
+	let show_settings = {
+		let state = showing_wishlist_settings.clone();
+		Callback::from(move |_| {
+			state.set(!*state);
+		})
+	};
 
 	let fetch = {
 		let handle = (state.clone(), saved.clone());
@@ -128,7 +134,7 @@ pub fn Page(props: &PageProps) -> Html {
 
 	let has_changes = *state != *saved;
 	let changes_notification = {
-		let mut classes = classes! {};
+		let mut classes = classes! {"is-success", "is-light", "px-3", "py-2"};
 		if !has_changes {
 			classes.push("is-hidden");
 		}
@@ -159,13 +165,11 @@ pub fn Page(props: &PageProps) -> Html {
 			</>},
 		};
 		html! {
-			<LevelItem classes={classes}>
-				<Notification classes={"is-success is-light px-3 py-2"}>
-					<Content classes="has-text-centered is-align-items-center is-flex">
-						{content}
-					</Content>
-				</Notification>
-			</LevelItem>
+			<Notification {classes}>
+				<Content classes="has-text-centered is-align-items-center is-flex">
+					{content}
+				</Content>
+			</Notification>
 		}
 	};
 
@@ -236,35 +240,69 @@ pub fn Page(props: &PageProps) -> Html {
 		}).collect::<Vec<_>>()}
 	</>};
 
-	let page_content = {
-		let path_indices = (*item_path).clone();
-		let path_count = path_indices.len();
-		let path_segments = {
-			let set_current_path = set_current_path.clone();
-			state.file.get_items_for(path_indices).into_iter().enumerate().map(move |(idx, (path_to_item, item))| {
-				let mut item_classes = classes!{};
-				if idx == path_count - 1 {
-					item_classes.push("is-active");
-				}
-				let onclick = set_current_path.reform(move |_| path_to_item.clone());
-				html! { <li class={item_classes}><a {onclick}>{&item.name}</a></li> }
-			}).collect::<Vec<_>>()
-		};
-		let item = get_current_item(&mut (*state).clone(), &item_path).cloned();
-		let (sidebar, core, post) = match item {
-			Some(item) => (
-				html! { {item_cards} },
-				html! {<>
+	let tag_header = html! {<>
+		<Columns>
+			<Column classes="is-2">
+				<Content>
+					<Button classes={"is-primary is-fullwidth"} onclick={create_item}>
+						<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
+						<span>{"New Item"}</span>
+					</Button>
+				</Content>
+			</Column>
+			<Column>
+				<Tags classes={"is-justify-content-center are-medium"}>{tag_filters}</Tags>
+			</Column>
+		</Columns>
+	</>};
+
+	let page_content = match *showing_wishlist_settings {
+		true => html! {
+			<Button classes={"is-danger is-light"} onclick={delete_wishlist.clone()}>
+				<Icon size={Size::Small}><i class="fas fa-trash" /></Icon>
+				<span>{"Permanently Delete Wishlist"}</span>
+			</Button>
+		},
+		false => {
+			let path_indices = (*item_path).clone();
+			let path_count = path_indices.len();
+			let path_segments = {
+				let set_current_path = set_current_path.clone();
+				state
+					.file
+					.get_items_for(path_indices)
+					.into_iter()
+					.enumerate()
+					.map(move |(idx, (path_to_item, item))| {
+						let mut item_classes = classes! {};
+						if idx == path_count - 1 {
+							item_classes.push("is-active");
+						}
+						let onclick = set_current_path.reform(move |_| path_to_item.clone());
+						html! { <li class={item_classes}><a {onclick}>{&item.name}</a></li> }
+					})
+					.collect::<Vec<_>>()
+			};
+			let item = get_current_item(&mut (*state).clone(), &item_path).cloned();
+			match item {
+				Some(item) => html! {<>
 					<Level>
 						<LevelLeft>
-							<LevelItem><ybc::Breadcrumb>{path_segments}</ybc::Breadcrumb></LevelItem>
+							<LevelItem>
+								<span style={"padding-right: 5px;"}>{"Item Path:"}</span>
+								<ybc::Breadcrumb>{path_segments}</ybc::Breadcrumb>
+							</LevelItem>
 						</LevelLeft>
 						<LevelRight>
 							<LevelItem>
 								<Button onclick={{
 									let item_path = item_path.clone();
-									Callback::from(move |_| item_path.set(Default::default()))
-								}}>{"Close Item"}</Button>
+									Callback::from(move |_| {
+										let mut prev = (*item_path).clone();
+										prev.pop_back();
+										item_path.set(prev);
+									})
+								}}>{"Back"}</Button>
 							</LevelItem>
 						</LevelRight>
 					</Level>
@@ -278,36 +316,13 @@ pub fn Page(props: &PageProps) -> Html {
 						can_bundle={item_path.len() <= 1}
 					/>
 				</>},
-				html! {},
-			),
-			None => (
-				html! {},
-				html! {},
-				html! {
-					<div class={"content"} style={"display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); grid-gap: 0.5em;"}>
-						{item_cards}
-					</div>
-				},
-			),
-		};
-		html! {<>
-			<Columns>
-				<Column classes="is-2">
-					<Content>
-						<Button classes={"is-primary is-fullwidth"} onclick={create_item}>
-							<Icon size={Size::Small}><i class="fas fa-plus" /></Icon>
-							<span>{"New Item"}</span>
-						</Button>
-					</Content>
-					{sidebar}
-				</Column>
-				<Column>
-					<Tags classes={"is-justify-content-center are-medium"}>{tag_filters}</Tags>
-					{core}
-				</Column>
-			</Columns>
-			{post}
-		</>}
+
+				None => html! {<>
+					{tag_header}
+					{item_cards}
+				</>},
+			}
+		}
 	};
 
 	html! {<>
@@ -326,15 +341,18 @@ pub fn Page(props: &PageProps) -> Html {
 					</LevelItem>
 				</LevelLeft>
 				<LevelRight>
-					{changes_notification}
 					<LevelItem>
-						<Button classes={"is-danger is-light"} onclick={delete_wishlist.clone()}>
-							<Icon size={Size::Small}><i class="fas fa-trash" /></Icon>
-							<span>{"Delete"}</span>
+						<Button classes={"is-link is-light"} onclick={show_settings}>
+							<Icon size={Size::Small}><i class="fas fa-gear" /></Icon>
+							<span>{match *showing_wishlist_settings {
+								true => "Back",
+								false => "Actions",
+							}}</span>
 						</Button>
 					</LevelItem>
 				</LevelRight>
 			</Level>
+			{changes_notification}
 			{page_content}
 		</Section>
 	</>}
@@ -350,19 +368,75 @@ pub struct ItemCardProps {
 
 #[function_component]
 pub fn ItemCard(props: &ItemCardProps) -> Html {
-	html! {<Content>
-		<div class={"card"}>
-			<CardHeader>
-				<p class="card-header-title">{&props.item.name}</p>
+	let item_img = match &props.item.kind {
+		item::Kind::Specific(item) => match &item.image_url {
+			Some(url) => Some(html! {
+				<figure class={"image is-128x128"} style="margin: auto;">
+					<img src={url.clone()} style="max-height: 100%; width: auto; margin: auto;" />
+				</figure>
+			}),
+			None => None,
+		},
+		item::Kind::Idea(item)  => match &item.image_url {
+			Some(url) => Some(html! {
+				<figure class={"image is-128x128"} style="margin: auto;">
+					<img src={url.clone()} style="max-height: 100%; width: auto; margin: auto;" />
+				</figure>
+			}),
+			None => None,
+		},
+		// TODO: Img display set
+		item::Kind::Bundle(_) => None,
+	};
+	
+	// TODO: Quantity Requested (only for owners)
+	// TODO: Quantity Available for reservation (later, and only for non-owners)
+
+	let card_style = {
+		let mut attrs = HashMap::new();
+		attrs.insert("background-color", props.item.kind.name().color());
+		attrs
+			.into_iter()
+			.map(|(k, v)| format!("{k}:{v};"))
+			.collect::<Vec<_>>()
+			.join("")
+	};
+	html! {
+		<div class={"card block"}>
+			<header class="card-header" style={card_style}>
+				<p class="card-header-title">
+					{props.item.kind.name().value()}
+					{":  "}
+					{&props.item.name}
+				</p>
 				<Button
 					classes={"card-header-icon has-text-danger"}
 					onclick={props.on_delete.reform(|_| {})}
 				><Icon size={Size::Small}><i class="fas fa-trash" /></Icon></Button>
-			</CardHeader>
+			</header>
 			<CardContent>
-				<Content>
-					{&props.item.description}
-				</Content>
+				<Columns>
+					{item_img.map(|img| html! {
+						<Column classes="is-2">
+							{img}
+						</Column>
+					}).unwrap_or(html! {})}
+					<Column>
+						<p>
+							<span class="label" style="display: inline; padding-right: 5px;">{"Cost:"}</span>
+							{"$"}{props.item.cost()}
+						</p>
+						{match props.item.description.is_empty() {
+							true => html! {},
+							false => html! {
+								<Content>
+									<span class="label">{"Description:"}</span>
+									<pre style="background-color: transparent; padding: 0px 0px 0px 10px;">{&props.item.description}</pre>
+								</Content>
+							},
+						}}
+					</Column>
+				</Columns>
 			</CardContent>
 			<CardFooter>
 				<Button classes={"card-footer-item"} onclick={{
@@ -371,7 +445,7 @@ pub fn ItemCard(props: &ItemCardProps) -> Html {
 				}}>{"Edit"}</Button>
 			</CardFooter>
 		</div>
-	</Content>}
+	}
 }
 
 #[derive(Properties, PartialEq)]
@@ -612,7 +686,7 @@ pub fn ItemData(
 		</>},
 		item::Kind::Bundle(bundle) => {
 			html! {<>
-				<div class={"content"} style={"display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); grid-gap: 0.5em;"}>
+				<div class={"block"}>
 					{bundle.entries.iter().enumerate().map(|(idx, item)| html! {
 						<ItemCard
 							item={item.clone()}

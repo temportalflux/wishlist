@@ -31,7 +31,8 @@ pub fn Page() -> Html {
 		<ybc::Navbar classes={"is-dark"}
 			navbrand={Some(html! {
 				<Link<Route> classes={"navbar-item"} to={Route::Home}>
-					<img src="https://bulma.io/images/bulma-logo.png" width="112" height="28" />
+					// 640x160 <=> 112x28 <=> 4/1
+					<img src="https://bulma.io/images/bulma-logo.png" style={"aspect-ratio: auto 4;"} />
 				</Link<Route>>
 			})}
 			navstart={Some(html! {<>

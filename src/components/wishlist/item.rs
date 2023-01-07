@@ -1,17 +1,20 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::{BTreeSet, VecDeque}, str::FromStr};
+use std::{
+	collections::{BTreeSet, VecDeque},
+	str::FromStr,
+};
 
 pub trait ItemContainer {
 	fn get_items(&self) -> Option<&Vec<Item>>;
 	fn get_items_mut(&mut self) -> Option<&mut Vec<Item>>;
-	
+
 	fn get_item(&self, idx: usize) -> Option<&Item> {
 		match self.get_items() {
 			Some(items) => items.get(idx),
 			None => None,
 		}
 	}
-	
+
 	fn get_item_mut(&mut self, idx: usize) -> Option<&mut Item> {
 		match self.get_items_mut() {
 			Some(items) => items.get_mut(idx),
@@ -25,14 +28,17 @@ pub trait ItemContainer {
 				Some(item) => match path.is_empty() {
 					true => Some(item),
 					false => item.get_item_mut_at(path),
-				}
+				},
 				None => None,
-			}
+			},
 			None => None,
 		}
 	}
 
-	fn get_items_for(&self, path: VecDeque<usize>) -> Vec<(VecDeque<usize>, &Item)> where Self: Sized {
+	fn get_items_for(&self, path: VecDeque<usize>) -> Vec<(VecDeque<usize>, &Item)>
+	where
+		Self: Sized,
+	{
 		let mut container: &dyn ItemContainer = self;
 		let mut items = Vec::with_capacity(path.len());
 		let mut item_path = VecDeque::with_capacity(path.len());
@@ -163,6 +169,14 @@ impl KindName {
 			_ => unimplemented!("No such KindName {s}"),
 		}
 	}
+
+	pub fn color(&self) -> &'static str {
+		match self {
+			Self::Specific => "#f7cf7c",
+			Self::Idea => "#92b6e4",
+			Self::Bundle => "#b098d1",
+		}
+	}
 }
 impl FromStr for KindName {
 	type Err = ();
@@ -190,6 +204,14 @@ impl Item {
 
 	pub fn inc_quantity(&mut self, _: web_sys::MouseEvent) {
 		self.quantity = self.quantity.saturating_add(1);
+	}
+	
+	pub fn cost(&self) -> f32 {
+		match &self.kind {
+			Kind::Specific(item) => item.cost_per_unit,
+			Kind::Idea(item) => item.estimated_cost,
+			Kind::Bundle(item) => item.entries.iter().map(Self::cost).sum(),
+		}
 	}
 }
 impl ItemContainer for Item {
@@ -292,11 +314,13 @@ impl Into<kdl::KdlNode> for Kind {
 			match self {
 				Kind::Specific(value) => {
 					if let Some(image_url) = value.image_url {
-						doc.nodes_mut().push({
-							let mut node = kdl::KdlNode::new("image_url");
-							node.push(image_url);
-							node
-						});
+						if !image_url.is_empty() {
+							doc.nodes_mut().push({
+								let mut node = kdl::KdlNode::new("image_url");
+								node.push(image_url);
+								node
+							});
+						}
 					}
 					doc.nodes_mut().push({
 						let mut node = kdl::KdlNode::new("offer_url");
@@ -311,11 +335,13 @@ impl Into<kdl::KdlNode> for Kind {
 				}
 				Kind::Idea(value) => {
 					if let Some(image_url) = value.image_url {
-						doc.nodes_mut().push({
-							let mut node = kdl::KdlNode::new("image_url");
-							node.push(image_url);
-							node
-						});
+						if !image_url.is_empty() {
+							doc.nodes_mut().push({
+								let mut node = kdl::KdlNode::new("image_url");
+								node.push(image_url);
+								node
+							});
+						}
 					}
 					doc.nodes_mut().push({
 						let mut node = kdl::KdlNode::new("estimated_cost");

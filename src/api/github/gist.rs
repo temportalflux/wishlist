@@ -401,7 +401,7 @@ impl crate::components::wishlist::item::ItemContainer for List {
 	fn get_items(&self) -> Option<&Vec<Item>> {
 		Some(&self.items)
 	}
-	
+
 	fn get_items_mut(&mut self) -> Option<&mut Vec<Item>> {
 		Some(&mut self.items)
 	}
