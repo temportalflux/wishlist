@@ -11,7 +11,7 @@ use ybc::{
 	Notification, Section, Select, Size, Subtitle, Tag, Tags, TextArea, Title,
 };
 use yew::prelude::*;
-use yew_hooks::use_clipboard;
+use yew_hooks::{use_clipboard, use_drag_with_options, use_drop_with_options, UseDragOptions, UseDropOptions};
 
 #[derive(Clone, PartialEq)]
 pub struct Mutator(Callback<Box<dyn FnOnce(&mut Item)>>);
@@ -238,6 +238,11 @@ pub fn Page(props: &PageProps) -> Html {
 				}}
 			/>
 		}).collect::<Vec<_>>()}
+		<ItemCardBase can_drag=false can_drop_onto=true>
+			<CardContent>
+				{"End of List"}
+			</CardContent>
+		</ItemCardBase>
 	</>};
 
 	let tag_header = html! {<>
@@ -359,6 +364,75 @@ pub fn Page(props: &PageProps) -> Html {
 }
 
 #[derive(Properties, PartialEq)]
+pub struct ItemCardBaseProps {
+	#[prop_or_default]
+	pub id: Option<String>,
+	#[prop_or_default]
+	pub can_drag: bool,
+	#[prop_or_default]
+	pub can_drop_onto: bool,
+	#[prop_or_default]
+	pub children: Children,
+}
+
+#[function_component]
+pub fn ItemCardBase(ItemCardBaseProps {
+	id, can_drag, can_drop_onto, children
+}: &ItemCardBaseProps) -> Html {
+	let node = use_node_ref();
+	let drop_over_with_valid_src = use_state(|| false);
+
+	let drag_id = id.clone().unwrap_or_default();
+	let _drag = use_drag_with_options(
+		node.clone(),
+		UseDragOptions {
+			ondragstart: can_drag.then(move || Box::new(move |e: DragEvent| {
+				let Some(data_transfer) = e.data_transfer() else { return; };
+				let _ = data_transfer.clear_data();
+				let _ = data_transfer.set_data("text/plain", &format!("item:{drag_id}"));
+			}) as Box<dyn FnMut(DragEvent) + 'static>),
+			..Default::default()
+		},
+	);
+
+	let drop_id = id.clone().unwrap_or_default();
+	let drop = use_drop_with_options(
+		node.clone(),
+		UseDropOptions {
+			ondrop: can_drop_onto.then(move || Box::new(move |e: DragEvent| {
+				let Some(data_transfer) = e.data_transfer() else { return; };
+				let Ok(data) = data_transfer.get_data("text") else { return; };
+				if data.starts_with("item:") {
+					let Some(dragged_id) = data.split(':').skip(1).next() else { return; };
+					log::debug!("Dropped item {dragged_id:?} onto item {drop_id:?}");
+				}
+			}) as Box<dyn FnMut(DragEvent) + 'static>),
+			..Default::default()
+		},
+	);
+
+	log::debug!("{:?}", *drop.text);
+
+	let style = {
+		let mut attrs = HashMap::new();
+		if *drop_over_with_valid_src {
+			attrs.insert("border-style", "dashed".to_owned());
+		}
+		attrs
+			.into_iter()
+			.map(|(k, v)| format!("{k}:{v};"))
+			.collect::<Vec<_>>()
+			.join("")
+	};
+	
+	html! {
+		<div class={"card block"} ref={node} {style}>
+			{children.clone()}
+		</div>
+	}
+}
+
+#[derive(Properties, PartialEq)]
 pub struct ItemCardProps {
 	pub item: Item,
 	pub path_to_item: VecDeque<usize>,
@@ -402,7 +476,7 @@ pub fn ItemCard(props: &ItemCardProps) -> Html {
 			.join("")
 	};
 	html! {
-		<div class={"card block"}>
+		<ItemCardBase id={props.path_to_item.back().map(usize::to_string)} can_drag=true can_drop_onto=true>
 			<header class="card-header" style={card_style}>
 				<p class="card-header-title">
 					{props.item.kind.name().value()}
@@ -444,7 +518,7 @@ pub fn ItemCard(props: &ItemCardProps) -> Html {
 					props.on_edit.reform(move |_| path_to_item.clone())
 				}}>{"Edit"}</Button>
 			</CardFooter>
-		</div>
+		</ItemCardBase>
 	}
 }
 
