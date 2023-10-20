@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<script async src="https://ga.jspm.io/npm:es-module-shims@1.7.2/dist/es-module-shims.js" crossorigin="anonymous"></script>
+		<script type="importmap">
+			{
+				"imports": {
+					"bootstrap": "https://ga.jspm.io/npm:bootstrap@5.2.3/dist/js/bootstrap.esm.js"
+				},
+				"scopes": {
+					"https://ga.jspm.io/": {
+						"@popperjs/core": "https://ga.jspm.io/npm:@popperjs/core@2.11.8/lib/index.js"
+					}
+				}
+			}
+		</script>
+
+		<meta charset="utf-8" />
+		<title>Wishlist</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!-- Trunk operations: https://trunkrs.dev/assets -->
+		<!-- Set the basename from the public-url provided to the build command -->
+		<base data-trunk-public-url />
+		<!-- Execute the wasm generated from source -->
+		<link data-trunk rel="rust" />
+		<link data-trunk rel="copy-file" href="netlify.toml" />
+		<link data-trunk rel="copy-dir" href="assets" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥐</text></svg>"></link>
+		
+		<!--
+		<link data-trunk rel="copy-dir" href="modules" />
+		-->
+
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+		
+		<!-- Compile and link scss styles -->
+		<link data-trunk rel="scss" href="index.scss" />
+
+		<!--
+			This forces bootstrap to load so things like dropdowns work,
+			which it would otherwise not do if a component doesnt explicitly require it (modals & tooltips).
+		-->
+		<script type="module">
+			import * as bootstrap from 'bootstrap';
+		</script>
+
+	</head>
+	<body></body>
+</html>

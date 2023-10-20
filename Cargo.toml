@@ -1,0 +1,74 @@
+[package]
+name = "wishlist-rs"
+description = ""
+repository = "https://github.com/temportalflux/wishlist-rs/"
+license = "MIT OR Apache-2.0"
+authors = ["Dustin Yost <dustin.yost.t@gmail.com>"]
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+kdlize = { path = "crates/kdlize" }
+netlify-oauth = { path = "crates/netlify-oauth" }
+github = { path = "crates/github" }
+database = { path = "crates/database" }
+
+log = { version = "0.4", features = ["std"] }
+simplelog = "0.12"
+time = "0.3"
+anyhow = "1.0"
+thiserror = "1.0"
+
+futures = "0.3"
+futures-util = "0.3"
+async-channel = "1.8"
+
+serde = "1.0"
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6"
+
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm-timer = "0.2"
+fluvio-wasm-timer = "0.2"
+gloo-events = "0.2"
+gloo-storage = "0.3"
+gloo-utils = "0.2"
+gloo-timers = { version = "0.3", features = ["futures"] }
+web-sys = { version = "0.3", features = [
+	"DataTransfer", "Document", "DomTokenList", "VisibilityState",
+	"HtmlCollection", "HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
+	"Request", "Storage", "Window",
+	"Node", "NodeList",
+	"MediaQueryList", "MediaQueryListEvent",
+	"Event", "EventTarget", "KeyboardEvent",
+	"Performance", "Screen",
+	"UiEvent", "CssStyleDeclaration",
+	"IdbFactory", "IdbOpenDbRequest",
+] }
+
+yew = { version = "0.21", features = ["csr"] }
+yew-router = { version = "0.18" }
+yewdux = "0.9"
+yew-hooks = "0.3"
+
+reqwest = { version = "0.11", features = ["json"] }
+url = "2.3"
+urlencoding = "2.1"
+kdl = { version = "5.0.0-alpha.0", git = "https://github.com/kdl-org/kdl-rs" }
+
+convert_case = "0.6"
+downcast-rs = "1.2"
+derivative = "2.2"
+dyn-clone = "1.0"
+enum-map = "2.6"
+enumset = "1.0"
+itertools = "0.11"
+lazy_static = "1.4"
+multimap = "0.9"
+num-traits = "0.2"
+phf = { version = "0.11", features = ["macros"] }
+rand = "0.8"
+regex = "1.8"
+unzip-n = "0.1"
+uuid = { version = "1.3", features = ["v4", "js"] }
