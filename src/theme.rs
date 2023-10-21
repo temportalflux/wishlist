@@ -123,7 +123,7 @@ pub fn Dropdown() -> Html {
 	};
 
 	html! {
-		<li class="nav-item dropdown">
+		<li class="nav-item dropdown theme">
 			<a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 				<i class={format!("bi {}", theme.as_icon_name())} />
 			</a>

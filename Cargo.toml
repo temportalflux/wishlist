@@ -46,6 +46,7 @@ web-sys = { version = "0.3", features = [
 	"UiEvent", "CssStyleDeclaration",
 	"IdbFactory", "IdbOpenDbRequest",
 ] }
+idb = "0.4"
 
 yew = { version = "0.21", features = ["csr"] }
 yew-router = { version = "0.18" }
