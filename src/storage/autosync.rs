@@ -1,8 +1,9 @@
+use crate::{data, database::Database};
 use derivative::Derivative;
+use kdlize::AsKdl;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
-use crate::database::Database;
 
 mod query_viewer;
 use query_viewer::*;
@@ -187,31 +188,73 @@ async fn process_request(req: Request, database: &Database, status: &Status) -> 
 		Request::UpdateLists => {}
 	}
 
-	status.push_stage("Checking authentiation", None);
+	// NOTE: The initial implementation used gists. We arent going to do that anymore b/c other users cannot collaborate on it which means no reserving of items.
 
+	status.push_stage("Checking authentiation", None);
 	let query_viewer = QueryViewer {
 		status: status.clone(),
 		client: storage.clone(),
 	};
 	let (user, data_repo) = query_viewer.run().await?;
-
-	if data_repo.is_none() {
-		let generate_repo = GenerateDataRepo {
-			status: status.clone(),
-			client: storage.clone(),
-		};
-		generate_repo.run().await?;
-	}
-	
-	// TODO: Update the data_repo if its out of date
-	// TODO: From the database (updated from prev stage), read all wishlist ids that the user has access to (those they own and those they were invited to).
-	// update all this data by first checking the remote version, and then getting file content/parsing kdl.
-	// TODO: When an out of date list is detected, its remote version is updated. We wont hold a local cache for data repos.
-	// TODO: Also need to update the user with their data from the datarepo
-
-	// NOTE: The initial implementation used gists. We arent going to do that anymore b/c other users cannot collaborate on it which means no reserving of items.
-
 	status.pop_stage();
+
+	match data_repo {
+		None => {
+			status.push_stage("Generating user data storage", None);
+
+			let generate_repo = GenerateDataRepo {
+				status: status.clone(),
+				client: storage.clone(),
+			};
+			let response = generate_repo.run().await?;
+
+			// user data was created in remote, create a corresponding entry in database
+			let user = crate::database::User {
+				login: user.clone(),
+				file_id: Some(response.user_file_id),
+				kdl: response.user_content,
+				local_version: response.remote_version.clone(),
+				remote_version: response.remote_version,
+			};
+			database
+				.mutate(move |transaction| {
+					use database::{ObjectStoreExt, TransactionExt};
+					Box::pin(async move {
+						let user_store = transaction.object_store_of::<crate::database::User>()?;
+						user_store.put_record(&user).await?;
+						Ok(())
+					})
+				})
+				.await?;
+
+			status.pop_stage();
+		}
+		Some(repo) => {
+
+			let local_user = database.get::<crate::database::User>(user.as_str()).await?;
+			match local_user {
+				Some(mut user) => {
+					// TODO: update remote version of user in database
+					user.remote_version = repo.version.clone();
+					//user
+				}
+				None => {
+					// TODO: grab user.kdl from repo so we can get the file_id & kdl content
+					let args = github::repos::contents::get::Args {
+						owner: &repo.owner,
+						repo: &repo.name,
+						path: std::path::Path::new("user.kdl"),
+						version: &repo.version,
+					};
+					let content = storage.get_file_content(args).await?;
+
+				}
+			};
+
+			// TODO: if remote version != local version, fetch and download changes to lists
+			// TODO: fetch remote versions of external lists, and download any changes
+		}
+	}
 
 	Ok(())
 }
