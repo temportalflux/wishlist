@@ -1,10 +1,22 @@
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl};
 
+mod entry;
+pub use entry::*;
+mod kind;
+pub use kind::*;
+mod specific;
+pub use specific::*;
+mod idea;
+pub use idea::*;
+mod bundle;
+pub use bundle::*;
+
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct List {
 	pub name: String,
 	// user-ids of those whove been invited to access this list (in addition to the owner)
 	pub invitees: Vec<String>,
+	pub entries: Vec<Entry>,
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -40,7 +52,12 @@ impl FromKdl<()> for List {
 		let name = node.next_str_req()?.to_owned();
 		let invitees = node.query_str_all("scope() > invite", 0)?;
 		let invitees = invitees.into_iter().map(str::to_owned).collect();
-		Ok(Self { name, invitees })
+		let entries = node.query_all_t("scope() > entry")?;
+		Ok(Self {
+			name,
+			invitees,
+			entries,
+		})
 	}
 }
 
@@ -50,6 +67,9 @@ impl AsKdl for List {
 		node.push_entry(self.name.as_str());
 		for invitee in &self.invitees {
 			node.push_child_entry("invite", invitee.as_str());
+		}
+		for entry in &self.entries {
+			node.push_child_t("entry", entry);
 		}
 		node
 	}

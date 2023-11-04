@@ -1,3 +1,5 @@
+pub mod error;
+
 pub fn spawn_local<F, E>(target: &'static str, future: F)
 where
 	F: futures_util::Future<Output = Result<(), E>> + 'static,

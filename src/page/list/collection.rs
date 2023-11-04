@@ -1,10 +1,10 @@
 use crate::{
+	components::Spinner,
 	data::List,
 	database::{
 		query::{use_query_all, QueryStatus},
 		List as ListRecord, ListId,
 	},
-	spinner::Spinner,
 	GeneralProp, Route,
 };
 use anyhow::anyhow;
@@ -22,24 +22,23 @@ fn sort_lists(a: &(ListId, &ListRecord, &List), b: &(ListId, &ListRecord, &List)
 }
 
 #[function_component]
-pub fn Collection() -> Html {
-	let query_lists = use_query_all::<crate::data::List>(true);
+pub fn Collection() -> HtmlResult {
+	let query_lists = use_query_all::<crate::data::List>()?;
 	let refresh_lists = Callback::from({
-		let query_lists = query_lists.clone();
+		let query_lists = query_lists.get_trigger().clone();
 		move |_| {
-			query_lists.run(());
+			(*query_lists)(());
 		}
 	});
-	html! {
+	Ok(html! {
 		<div class="d-flex flex-column list-collection">
 			<div class="d-flex justify-content-center">
 				<ButtonCreateList value={refresh_lists.clone()} />
 			</div>
 			<div class="d-flex">
 				{match query_lists.status() {
-					QueryStatus::Pending => html!(<Spinner />),
-					QueryStatus::Empty | QueryStatus::Failed(_) => html!("No wishlists TODO improve this display"),
-					QueryStatus::Success(lists) => {
+					Err(_) => html!("No wishlists TODO improve this display"),
+					Ok(lists) => {
 						let iter = lists.iter();
 						let iter = iter.filter_map(|(id, (record, list))| match ListId::from_str(&id) {
 							Ok(id) => Some((id, record, list)),
@@ -59,7 +58,7 @@ pub fn Collection() -> Html {
 				}}
 			</div>
 		</div>
-	}
+	})
 }
 
 #[function_component]

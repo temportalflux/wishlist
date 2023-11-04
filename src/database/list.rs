@@ -69,7 +69,7 @@ impl FromKdl<()> for ListId {
 	}
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
 pub struct List {
 	pub id: String,
 	pub file_id: String,

@@ -4,11 +4,11 @@ use yew_router::prelude::*;
 use yewdux::prelude::use_store_value;
 
 mod auth;
+mod components;
 mod data;
 mod database;
 mod logging;
 mod page;
-mod spinner;
 mod storage;
 mod theme;
 mod util;
@@ -38,10 +38,18 @@ impl Route {
 	fn switch(self) -> Html {
 		match self {
 			Self::NotFound => html!(<page::NotFound />),
-			Self::Collection => html!(<page::list::Collection />),
+			Self::Collection => html! {
+				<Suspense fallback={html!(<components::Spinner />)}>
+					<page::list::Collection />
+				</Suspense>
+			},
 			Self::List { owner, id } => {
 				let value = ListId { owner, id };
-				html!(<page::list::List {value} />)
+				html! {
+					<Suspense fallback={html!(<components::Spinner />)}>
+						<page::list::List {value} />
+					</Suspense>
+				}
 			}
 		}
 	}

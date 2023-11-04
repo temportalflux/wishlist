@@ -1,6 +1,7 @@
 @charset "utf-8";
 
 @use "src/bootstrap/scss/bootstrap.scss";
+@use "src/components/tag.scss";
 
 html {
 }
@@ -39,6 +40,14 @@ body {
 
 .list-collection {
 	.list.card {
+		> .card-header > .bi-trash {
+			color: var(--bs-danger);
+		}
+	}
+}
+.list.page {
+	.entry.card {
+		max-width: 350px;
 		> .card-header > .bi-trash {
 			color: var(--bs-danger);
 		}

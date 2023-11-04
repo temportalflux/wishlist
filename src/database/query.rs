@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
-
-use yew::prelude::*;
-use yew_hooks::UseAsyncHandle;
+use std::{collections::BTreeMap, rc::Rc};
+use yew::{
+	prelude::*,
+	suspense::{SuspensionResult, UseFutureHandle},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum QueryStatus<T, E> {
@@ -11,41 +12,22 @@ pub enum QueryStatus<T, E> {
 	Failed(E),
 }
 
-#[derive(Clone)]
 pub struct UseQueryHandle<Args, Output, Error> {
-	async_handle: UseAsyncHandle<Output, Error>,
-	run: std::rc::Rc<dyn Fn(Args)>,
-}
-impl<Args, Output, Error> PartialEq for UseQueryHandle<Args, Output, Error>
-where
-	Output: PartialEq,
-	Error: PartialEq,
-{
-	fn eq(&self, other: &Self) -> bool {
-		self.async_handle == other.async_handle
-	}
+	handle: UseFutureHandle<Result<Output, Error>>,
+	run: Rc<dyn Fn(Args)>,
 }
 impl<Args, Output, Error> UseQueryHandle<Args, Output, Error> {
-	pub fn status(&self) -> QueryStatus<&Output, &Error> {
-		if self.async_handle.loading {
-			return QueryStatus::Pending;
-		}
-		if let Some(error) = &self.async_handle.error {
-			return QueryStatus::Failed(error);
-		}
-		if let Some(data) = &self.async_handle.data {
-			return QueryStatus::Success(data);
-		}
-		QueryStatus::Empty
+	pub fn get_trigger(&self) -> &Rc<dyn Fn(Args)> {
+		&self.run
 	}
 
-	pub fn run(&self, args: Args) {
-		(self.run)(args);
+	pub fn status(&self) -> &Result<Output, Error> {
+		&*self.handle
 	}
 }
 
 #[hook]
-pub fn use_query_all<D>(auto_fetch: bool) -> UseQueryHandle<(), BTreeMap<String, (D::Record, D)>, D::Error>
+pub fn use_query_all<D>() -> SuspensionResult<UseQueryHandle<(), BTreeMap<String, (D::Record, D)>, D::Error>>
 where
 	D: crate::data::RecordData + Clone + 'static + std::fmt::Debug,
 	D::Record: database::Record + for<'de> serde::Deserialize<'de> + Unpin + Clone + 'static + std::fmt::Debug,
@@ -54,67 +36,58 @@ where
 	use database::{ObjectStoreExt, Record, TransactionExt};
 	use futures_util::StreamExt;
 	let database = use_context::<super::Database>().unwrap();
-	let options = yew_hooks::UseAsyncOptions { auto: auto_fetch };
-	let async_handle = yew_hooks::use_async_with_options(
-		async move {
-			let transaction = database.read()?;
-			let store = transaction.object_store_of::<D::Record>()?;
-			let mut cursor = store.cursor_all::<D::Record>().await?;
-			let mut parsed_data = BTreeMap::new();
-			while let Some(record) = cursor.next().await {
-				let Some(key) = record.key() else { continue; };
-				let data = D::parse_record(&record)?;
-				parsed_data.insert(key.clone(), (record, data));
-			}
-			log::debug!("{parsed_data:?}");
-			Ok(parsed_data)
-		},
-		options,
-	);
-	let run = std::rc::Rc::new({
-		let handle = async_handle.clone();
+	let recycle = use_state(|| false);
+	let handle = yew::suspense::use_future_with(recycle.clone(), |_recycle| async move {
+		let transaction = database.read()?;
+		let store = transaction.object_store_of::<D::Record>()?;
+		let mut cursor = store.cursor_all::<D::Record>().await?;
+		let mut parsed_data = BTreeMap::new();
+		while let Some(record) = cursor.next().await {
+			let Some(key) = record.key() else { continue; };
+			let data = D::parse_record(&record)?;
+			parsed_data.insert(key.clone(), (record, data));
+		}
+		Ok(parsed_data)
+	})?;
+	let run = Rc::new({
+		let recycle = recycle.clone();
 		move |_args: ()| {
-			handle.run();
+			recycle.set(!*recycle);
 		}
 	});
-	UseQueryHandle { async_handle, run }
+	Ok(UseQueryHandle { handle, run })
 }
 
 #[hook]
 pub fn use_query_discrete<D>(
 	key: String,
-	auto_fetch: bool,
-) -> UseQueryHandle<Option<String>, Option<(D::Record, D)>, D::Error>
+) -> SuspensionResult<UseQueryHandle<Option<String>, Option<(D::Record, D)>, D::Error>>
 where
 	D: crate::data::RecordData + Clone + 'static + std::fmt::Debug,
 	D::Record: database::Record + for<'de> serde::Deserialize<'de> + Unpin + Clone + 'static + std::fmt::Debug,
 	D::Error: From<database::Error> + Clone + 'static,
 {
 	let database = use_context::<super::Database>().unwrap();
-	let options = yew_hooks::UseAsyncOptions { auto: auto_fetch };
-	let args_handle = std::rc::Rc::new(std::sync::Mutex::new(key));
-	let async_args = args_handle.clone();
-	let async_handle = yew_hooks::use_async_with_options(
-		async move {
-			let guard = async_args.lock().unwrap();
-			let key = &*guard;
+	let args = use_state(move || (key, false));
+	let handle = yew::suspense::use_future_with(args.clone(), |args| async move {
+		let key = &(*args).0;
 
-			let Some(record) = database.get::<D::Record>(key).await? else {
+		let Some(record) = database.get::<D::Record>(key).await? else {
 				return Ok(None);
 			};
-			let data = D::parse_record(&record)?;
-			Ok(Some((record, data)))
-		},
-		options,
-	);
-	let run = std::rc::Rc::new({
-		let handle = async_handle.clone();
-		move |args: Option<String>| {
-			if let Some(args) = args {
-				*args_handle.lock().unwrap() = args;
+		let data = D::parse_record(&record)?;
+		Ok(Some((record, data)))
+	})?;
+	let run = Rc::new({
+		let args_state = args.clone();
+		move |key: Option<String>| {
+			let recycle = !(*args_state).1;
+			if let Some(key) = key {
+				args_state.set((key, recycle));
+			} else {
+				args_state.set(((*args_state).0.clone(), recycle));
 			}
-			handle.run();
 		}
 	});
-	UseQueryHandle { async_handle, run }
+	Ok(UseQueryHandle { handle, run })
 }
