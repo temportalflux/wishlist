@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct User {
 	pub login: String,
-	pub file_id: Option<String>,
+	pub file_id: String,
 	pub kdl: String,
 	// the tree-id of the root directory in the remote repository
 	pub root_tree_id: String,

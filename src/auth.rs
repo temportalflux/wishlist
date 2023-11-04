@@ -1,9 +1,16 @@
+use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
 pub use netlify_oauth::*;
 
 static SITE_ID: &str = "64a0719f-a7e3-4d4a-b538-577bf4cdf1c4";
+
+#[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize, Store)]
+#[store(storage = "session", storage_tab_sync)]
+pub struct Info {
+	pub name: String,
+}
 
 pub fn request() -> Request {
 	Request {
@@ -40,7 +47,10 @@ pub fn LoginButton() -> Html {
 	let autosync_status = use_context::<crate::storage::autosync::Status>().unwrap();
 	let disabled = autosync_status.is_active();
 	if matches!(*auth_status, Status::Successful { .. }) {
-		let onclick = auth.logout_callback().reform(|_: MouseEvent| ());
+		let onclick = auth.logout_callback().reform(|_: MouseEvent| {
+			yewdux::dispatch::set(crate::auth::Info::default());
+			()
+		});
 		html! {
 			<button class="btn btn-outline-danger" {onclick} {disabled}>
 				{"Sign Out"}

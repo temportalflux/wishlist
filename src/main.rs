@@ -1,13 +1,17 @@
+use crate::database::ListId;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use yewdux::prelude::use_store_value;
 
 mod auth;
 mod data;
 mod database;
 mod logging;
 mod page;
+mod spinner;
 mod storage;
 mod theme;
+mod util;
 
 #[cfg(target_family = "wasm")]
 fn main() {
@@ -15,10 +19,12 @@ fn main() {
 	yew::Renderer::<App>::new().render();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Routable)]
+#[derive(Debug, Clone, PartialEq, Routable)]
 pub enum Route {
 	#[at("/")]
-	Home,
+	Collection,
+	#[at("/:owner/:id")]
+	List { owner: String, id: String },
 	#[not_found]
 	#[at("/404")]
 	NotFound,
@@ -31,10 +37,19 @@ impl Route {
 
 	fn switch(self) -> Html {
 		match self {
-			Self::Home => html!("this is the home page"),
 			Self::NotFound => html!(<page::NotFound />),
+			Self::Collection => html!(<page::list::Collection />),
+			Self::List { owner, id } => {
+				let value = ListId { owner, id };
+				html!(<page::list::List {value} />)
+			}
 		}
 	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct GeneralProp<T: Clone + PartialEq> {
+	pub value: T,
 }
 
 #[function_component]
@@ -63,13 +78,14 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 
 #[function_component]
 fn Body() -> Html {
+	let auth_status = use_store_value::<netlify_oauth::Status>();
 	let autosync_status = use_context::<storage::autosync::Status>().unwrap();
 	let display_route = autosync_status.is_active().then_some("d-none");
 	html! {<>
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
 				<div class="container-fluid">
-					<Link<Route> classes={classes!("navbar-brand")} to={Route::Home}>{"Wishlist"}</Link<Route>>
+					<Link<Route> classes={classes!("navbar-brand")} to={Route::Collection}>{"Wishlist"}</Link<Route>>
 					<button
 						class="navbar-toggler" type="button"
 						data-bs-toggle="collapse" data-bs-target="#navContent"
@@ -91,7 +107,13 @@ fn Body() -> Html {
 		</header>
 		<AutosyncTakeover />
 		<div class={classes!(display_route)}>
-			<Switch<Route> render={Route::switch} />
+			{match &*auth_status {
+				netlify_oauth::Status::Successful { .. } => {
+					html!(<Switch<Route> render={Route::switch} />)
+				}
+				_ => html!("Need to login - need to make custom page for this"),
+			}}
+
 		</div>
 	</>}
 }

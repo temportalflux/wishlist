@@ -36,3 +36,11 @@ body {
 .theme.dropdown > .dropdown-toggle {
 	--bs-nav-link-padding-x: 0.5rem;
 }
+
+.list-collection {
+	.list.card {
+		> .card-header > .bi-trash {
+			color: var(--bs-danger);
+		}
+	}
+}

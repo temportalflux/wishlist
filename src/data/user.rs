@@ -7,6 +7,7 @@ pub struct User {
 	pub external_lists: Vec<ListId>,
 }
 
+kdlize::impl_kdl_node!(User, "user");
 impl AsKdl for User {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		let mut node = kdlize::NodeBuilder::default();

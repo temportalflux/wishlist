@@ -1,10 +1,10 @@
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 
 use database::Record;
 use kdlize::{AsKdl, FromKdl};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ListId {
 	pub owner: String,
 	pub id: String,
@@ -15,9 +15,29 @@ impl std::fmt::Debug for ListId {
 	}
 }
 impl ToString for ListId {
-    fn to_string(&self) -> String {
-      format!("{}/{}", self.owner, self.id)
-    }
+	fn to_string(&self) -> String {
+		format!("{}/{}", self.owner, self.id)
+	}
+}
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ListIdParserError {
+	#[error("Missing owner in id {0:?}")]
+	MissingOwner(String),
+	#[error("Missing name in id {0:?}")]
+	MissingName(String),
+}
+impl FromStr for ListId {
+	type Err = ListIdParserError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let mut iter = s.split("/");
+		let owner = iter.next().ok_or(ListIdParserError::MissingOwner(s.to_owned()))?;
+		let id = iter.next().ok_or(ListIdParserError::MissingName(s.to_owned()))?;
+		Ok(Self {
+			owner: owner.to_owned(),
+			id: id.to_owned(),
+		})
+	}
 }
 
 impl ListId {
@@ -51,8 +71,8 @@ impl FromKdl<()> for ListId {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct List {
-	pub id: ListId,
-	pub file_id: Option<String>,
+	pub id: String,
+	pub file_id: String,
 	pub kdl: String,
 	pub local_version: String,
 }
@@ -60,5 +80,9 @@ pub struct List {
 impl Record for List {
 	fn store_id() -> &'static str {
 		"lists"
+	}
+
+	fn key(&self) -> Option<&String> {
+		Some(&self.id)
 	}
 }

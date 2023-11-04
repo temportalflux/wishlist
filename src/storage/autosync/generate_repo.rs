@@ -1,6 +1,6 @@
 use crate::storage::{DATA_REPO_TOPIC, USER_DATA_REPO_NAME};
 use github::{repos, GithubClient};
-use kdlize::{ext::NodeExt, AsKdl};
+use kdlize::{ext::NodeExt, AsKdl, NodeId};
 
 // Create the homebrew repo on the github client viewer (the user that is logged in).
 // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
@@ -34,7 +34,7 @@ impl GenerateDataRepo {
 
 		let content = crate::data::User::default()
 			.as_kdl()
-			.build("user")
+			.build(crate::data::User::id())
 			.to_doc_string_unescaped();
 		let args = github::repos::contents::update::Args {
 			repo_org: &owner,

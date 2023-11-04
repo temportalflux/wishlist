@@ -8,6 +8,7 @@ mod list;
 pub use list::*;
 mod user;
 pub use user::*;
+pub mod query;
 
 #[derive(Clone, PartialEq)]
 pub struct Database(database::Client);
@@ -20,6 +21,11 @@ impl Database {
 	pub fn write(&self) -> Result<database::Transaction, database::Error> {
 		self.0
 			.transaction(&[User::store_id(), List::store_id()], idb::TransactionMode::ReadWrite)
+	}
+
+	pub fn read(&self) -> Result<database::Transaction, database::Error> {
+		self.0
+			.transaction(&[User::store_id(), List::store_id()], idb::TransactionMode::ReadOnly)
 	}
 
 	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, database::Error>
@@ -37,6 +43,19 @@ impl Database {
 		fn_transaction(&transaction).await?;
 		transaction.commit().await?;
 		Ok(())
+	}
+
+	pub async fn new_list_id(&self, owner: &str) -> Result<ListId, database::Error> {
+		let mut list_id = ListId {
+			owner: owner.to_owned(),
+			id: String::default(),
+		};
+		let mut found_list = true;
+		while found_list {
+			list_id.id = nanoid::nanoid!(10, &nanoid::alphabet::SAFE).to_owned();
+			found_list = self.get::<List>(list_id.to_string()).await?.is_some();
+		}
+		Ok(list_id)
 	}
 }
 
