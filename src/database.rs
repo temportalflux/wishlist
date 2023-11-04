@@ -1,3 +1,5 @@
+use database::Record;
+use futures_util::future::LocalBoxFuture;
 use yew::prelude::*;
 
 mod schema;
@@ -13,6 +15,28 @@ pub struct Database(database::Client);
 impl Database {
 	pub async fn open() -> Result<Self, database::Error> {
 		Ok(Self(database::Client::open::<SchemaVersion>("wishlist").await?))
+	}
+
+	pub fn write(&self) -> Result<database::Transaction, database::Error> {
+		self.0
+			.transaction(&[User::store_id(), List::store_id()], idb::TransactionMode::ReadWrite)
+	}
+
+	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, database::Error>
+	where
+		T: Record + serde::de::DeserializeOwned,
+	{
+		self.0.get::<T>(key).await
+	}
+
+	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), database::Error>
+	where
+		F: FnOnce(&database::Transaction) -> LocalBoxFuture<'_, Result<(), database::Error>>,
+	{
+		let transaction = self.write()?;
+		fn_transaction(&transaction).await?;
+		transaction.commit().await?;
+		Ok(())
 	}
 }
 

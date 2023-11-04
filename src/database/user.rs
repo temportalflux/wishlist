@@ -1,6 +1,5 @@
 use database::Record;
 use serde::{Deserialize, Serialize};
-use super::ListId;
 
 // Represents a person who has wishlists. This may be the logged in user, someone whose invited them to a wishlist, or someone the user has invited.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -8,8 +7,10 @@ pub struct User {
 	pub login: String,
 	pub file_id: Option<String>,
 	pub kdl: String,
-	// wishlists owned by others that the user has been invited to
-	pub external_invites: Vec<ListId>,
+	// the tree-id of the root directory in the remote repository
+	pub root_tree_id: String,
+	// the version of the user's repository that is synced to locally
+	pub local_version: String,
 }
 
 impl Record for User {
