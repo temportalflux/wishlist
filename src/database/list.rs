@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use database::Record;
 use kdlize::{AsKdl, FromKdl};
 use serde::{Deserialize, Serialize};
@@ -12,6 +14,24 @@ impl std::fmt::Debug for ListId {
 		write!(f, "ListId({}/{})", self.owner, self.id)
 	}
 }
+impl ToString for ListId {
+    fn to_string(&self) -> String {
+      format!("{}/{}", self.owner, self.id)
+    }
+}
+
+impl ListId {
+	pub fn from_path(owner: impl Into<String>, path: impl AsRef<Path>) -> Self {
+		let stem_os = path.as_ref().file_stem().unwrap();
+		let stem_str = stem_os.to_str().unwrap();
+		let id = stem_str.to_owned();
+		Self {
+			owner: owner.into(),
+			id,
+		}
+	}
+}
+
 impl AsKdl for ListId {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		kdlize::NodeBuilder::default()
@@ -34,9 +54,7 @@ pub struct List {
 	pub id: ListId,
 	pub file_id: Option<String>,
 	pub kdl: String,
-	pub name: String,
 	pub local_version: String,
-	pub remote_version: String,
 }
 
 impl Record for List {

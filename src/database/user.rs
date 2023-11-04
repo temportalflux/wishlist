@@ -7,10 +7,10 @@ pub struct User {
 	pub login: String,
 	pub file_id: Option<String>,
 	pub kdl: String,
+	// the tree-id of the root directory in the remote repository
+	pub root_tree_id: String,
 	// the version of the user's repository that is synced to locally
 	pub local_version: String,
-	// the latest known version of the user's repository in the remote
-	pub remote_version: String,
 }
 
 impl Record for User {

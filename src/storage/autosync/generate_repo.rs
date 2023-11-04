@@ -11,6 +11,7 @@ pub struct GenerateDataRepo {
 }
 pub struct GenerateDataRepoResponse {
 	pub owner: String,
+	pub name: String,
 	pub user_file_id: String,
 	pub user_content: String,
 	pub remote_version: String,
@@ -20,7 +21,7 @@ impl GenerateDataRepo {
 		let create_repo = repos::create::Args {
 			org: None,
 			name: USER_DATA_REPO_NAME,
-			private: true,
+			private: false,
 		};
 		let owner = self.client.create_repo(create_repo).await?;
 
@@ -48,6 +49,7 @@ impl GenerateDataRepo {
 
 		Ok(GenerateDataRepoResponse {
 			owner,
+			name: USER_DATA_REPO_NAME.into(),
 			user_file_id: response.file_id,
 			user_content: content,
 			remote_version: response.version,
