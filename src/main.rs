@@ -1,4 +1,5 @@
 use crate::database::ListId;
+use page::list::EntryPath;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux::prelude::use_store_value;
@@ -25,6 +26,10 @@ pub enum Route {
 	Collection,
 	#[at("/:owner/:id")]
 	List { owner: String, id: String },
+	#[at("/:owner/:id/:root_idx")]
+	ListRootEntry { owner: String, id: String, root_idx: usize },
+	#[at("/:owner/:id/:root_idx/:bundle_idx")]
+	ListBundleEntry { owner: String, id: String, root_idx: usize, bundle_idx: usize },
 	#[not_found]
 	#[at("/404")]
 	NotFound,
@@ -44,13 +49,31 @@ impl Route {
 				</Suspense>
 			},
 			Self::List { owner, id } => {
-				let value = ListId { owner, id };
-				html! {
-					<Suspense fallback={html!(<components::Spinner />)}>
-						<page::list::List {value} />
-					</Suspense>
-				}
+				Self::html_list(ListId { owner, id }, None)
 			}
+			Self::ListRootEntry { owner, id, root_idx } => {
+				Self::html_list(ListId { owner, id }, Some(EntryPath::root(root_idx)))
+			}
+			Self::ListBundleEntry { owner, id, root_idx, bundle_idx } => {
+				Self::html_list(ListId { owner, id }, Some(EntryPath::root(root_idx).bundled(bundle_idx)))
+			}
+		}
+	}
+
+	pub fn new_list_entry(list_id: ListId, entry_path: Option<EntryPath>) -> Self {
+		let ListId { owner, id } = list_id;
+		match entry_path {
+			None => Self::List { owner, id },
+			Some(EntryPath { root: root_idx, bundle_idx: None }) => Self::ListRootEntry { owner, id, root_idx },
+			Some(EntryPath { root: root_idx, bundle_idx: Some(bundle_idx)}) => Self::ListBundleEntry { owner, id, root_idx, bundle_idx },
+		}
+	}
+
+	fn html_list(list_id: ListId, entry_path: Option<EntryPath>) -> Html {
+		html! {
+			<Suspense fallback={html!(<components::Spinner />)}>
+				<page::list::List {list_id} {entry_path} />
+			</Suspense>
 		}
 	}
 }

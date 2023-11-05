@@ -54,6 +54,28 @@ impl Kind {
 			Self::Bundle(_) => KindId::Bundle,
 		}
 	}
+
+	pub fn image_urls(&self) -> Vec<&String> {
+		let mut urls = Vec::with_capacity(1);
+		match self {
+			Self::Specific(specific) => {
+				if let Some(url) = &specific.image_url {
+					urls.push(url);
+				}
+			}
+			Self::Idea(idea) => {
+				if let Some(url) = &idea.image_url {
+					urls.push(url);
+				}
+			}
+			Self::Bundle(bundle) => {
+				for entry in &bundle.entries {
+					urls.extend(entry.kind.image_urls());
+				}
+			}
+		}
+		urls
+	}
 }
 impl From<KindId> for Kind {
 	fn from(name: KindId) -> Self {

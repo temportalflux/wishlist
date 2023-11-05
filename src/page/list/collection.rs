@@ -1,10 +1,6 @@
 use crate::{
-	components::Spinner,
 	data::List,
-	database::{
-		query::{use_query_all, QueryStatus},
-		List as ListRecord, ListId,
-	},
+	database::{query::use_query_all, List as ListRecord, ListId},
 	GeneralProp, Route,
 };
 use anyhow::anyhow;

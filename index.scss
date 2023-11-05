@@ -47,9 +47,33 @@ body {
 }
 .list.page {
 	.entry.card {
-		max-width: 350px;
+		width: 400px;
 		> .card-header > .bi-trash {
 			color: var(--bs-danger);
 		}
 	}
+	.entry.card.specific {
+		--bs-card-border-color: rgb(0 93 255 / 60%);
+		> .card-header {
+			--bs-card-cap-bg: rgb(0 66 181 / 30%);
+		}
+	}
+	.entry.card.idea {
+		--bs-card-border-color: rgb(0 177 0 / 50%);
+		> .card-header {
+			--bs-card-cap-bg: rgb(3 105 0 / 30%);
+		}
+	}
+	.entry.card.bundle {
+		--bs-card-border-color: rgb(161 71 225 / 50%);
+		> .card-header {
+			--bs-card-cap-bg: rgb(90 15 149 / 30%);
+		}
+	}
+}
+
+.breadcrumb-item.active > a {
+	color: inherit;
+	text-decoration: none;
+	pointer-events: none;
 }
