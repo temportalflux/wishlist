@@ -8,6 +8,7 @@ use std::{collections::BTreeSet, rc::Rc};
 use itertools::{Itertools, Position};
 use yew::prelude::*;
 use yew_router::prelude::{Link, use_navigator};
+use yewdux::prelude::use_store_value;
 
 #[derive(Clone, PartialEq)]
 struct EditableList {
@@ -114,7 +115,7 @@ fn ListBody(ListBodyProps { list_id, record, data, entry_path }: &ListBodyProps)
 						}).collect::<Vec<_>>()}
 					</ol>
 				</nav>
-				{entry_content(&list, path, entry, unique_tags)}
+				<EntryContent list={list.clone()} path={*path} {unique_tags} />
 			</div>
 		},
 	}
@@ -358,8 +359,47 @@ fn entry_card(entry: &Entry, route: Route, delete: Callback<()>) -> Html {
 	}
 }
 
-fn entry_content(list: &EditableList, path: &EntryPath, entry: &Entry, unique_tags: BTreeSet<AttrValue>) -> Html {
-	html! {
-		format!("{entry:?}")
-	}
+#[derive(Clone, PartialEq, Properties)]
+struct EntryContentProps {
+	list: UseReducerHandle<EditableList>,
+	path: EntryPath,
+	unique_tags: BTreeSet<AttrValue>,
+}
+#[function_component]
+fn EntryContent(EntryContentProps { list, path, unique_tags }: &EntryContentProps) -> Html {
+	let auth_info = use_store_value::<crate::auth::Info>();
+	let Some((_crumbs, entry)) = path.resolve_from(&list.data) else {
+		return html!("404 entry not found - todo better display");
+	};
+	let is_owner = list.record.id.starts_with(&auth_info.name);
+	let form_control = match is_owner {
+		true => "form-control",
+		false => "form-control-plaintext",
+	};
+
+	// TODO: quantity, tags, and kind (below)
+	// TODO: reserve btn, delete btn
+	// TODO: specific kind; image url, offer url, cost
+	// TODO: idea kind; image url, estimated cost, example urls
+	// TODO: bundle kind; entry cards/editor
+
+	html! {<div class="entry page">
+		<div class="mb-3">
+			<label for="name" class="form-label">{"Title"}</label>
+			<input
+				type="text"
+				class={form_control} readonly={!is_owner}
+				id="name" value={entry.name.clone()}
+			/>
+		</div>
+		<div class="mb-3">
+			<label class="form-label" for="description">{"Description"}</label>
+			<textarea rows="3"
+				class={form_control} readonly={!is_owner}
+				id="description"
+			>
+				{&entry.description}
+			</textarea>
+		</div>
+	</div>}
 }

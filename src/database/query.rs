@@ -4,14 +4,6 @@ use yew::{
 	suspense::{SuspensionResult, UseFutureHandle},
 };
 
-#[derive(Debug, PartialEq)]
-pub enum QueryStatus<T, E> {
-	Empty,
-	Pending,
-	Success(T),
-	Failed(E),
-}
-
 pub struct UseQueryHandle<Args, Output, Error> {
 	handle: UseFutureHandle<Result<Output, Error>>,
 	run: Rc<dyn Fn(Args)>,
