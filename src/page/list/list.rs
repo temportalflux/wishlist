@@ -841,7 +841,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 				let path = path.clone();
 				let save_to_database = save_to_database.clone();
 				move |_| {
-					let dst_path: EntryPath = path.bundled(usize::max_value());
+					let dst_path: EntryPath = path.bundled(0);
 					let mut entry = crate::data::Entry::default();
 					entry.name = format!("CustomItem");
 					list.add_entry(dst_path, entry);
