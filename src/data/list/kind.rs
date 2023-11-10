@@ -32,6 +32,15 @@ impl FromStr for KindId {
 		}
 	}
 }
+impl KindId {
+	pub fn help_info(&self) -> &'static str {
+		match self {
+			Self::Specific => "A specific offer found at the provided url. If gifting this item, please purchase the one at the url provided below.",
+			Self::Idea => "An idea for a gift. Example offers may be provided, but please use you're best judgement when purchasing an item. The item need not be one listed below, just something like these.",
+			Self::Bundle => "A set of items. If purchasing this, please purchase all of its contents together. Example: a picture (idea) and a specific frame.",
+		}
+	}
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Kind {

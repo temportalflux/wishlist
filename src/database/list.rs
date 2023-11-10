@@ -4,7 +4,7 @@ use database::Record;
 use kdlize::{AsKdl, FromKdl};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ListId {
 	pub owner: String,
 	pub id: String,

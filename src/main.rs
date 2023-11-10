@@ -29,7 +29,12 @@ pub enum Route {
 	#[at("/:owner/:id/:root_idx")]
 	ListRootEntry { owner: String, id: String, root_idx: usize },
 	#[at("/:owner/:id/:root_idx/:bundle_idx")]
-	ListBundleEntry { owner: String, id: String, root_idx: usize, bundle_idx: usize },
+	ListBundleEntry {
+		owner: String,
+		id: String,
+		root_idx: usize,
+		bundle_idx: usize,
+	},
 	#[not_found]
 	#[at("/404")]
 	NotFound,
@@ -48,15 +53,19 @@ impl Route {
 					<page::list::Collection />
 				</Suspense>
 			},
-			Self::List { owner, id } => {
-				Self::html_list(ListId { owner, id }, None)
-			}
+			Self::List { owner, id } => Self::html_list(ListId { owner, id }, None),
 			Self::ListRootEntry { owner, id, root_idx } => {
 				Self::html_list(ListId { owner, id }, Some(EntryPath::root(root_idx)))
 			}
-			Self::ListBundleEntry { owner, id, root_idx, bundle_idx } => {
-				Self::html_list(ListId { owner, id }, Some(EntryPath::root(root_idx).bundled(bundle_idx)))
-			}
+			Self::ListBundleEntry {
+				owner,
+				id,
+				root_idx,
+				bundle_idx,
+			} => Self::html_list(
+				ListId { owner, id },
+				Some(EntryPath::root(root_idx).bundled(bundle_idx)),
+			),
 		}
 	}
 
@@ -64,8 +73,19 @@ impl Route {
 		let ListId { owner, id } = list_id;
 		match entry_path {
 			None => Self::List { owner, id },
-			Some(EntryPath { root: root_idx, bundle_idx: None }) => Self::ListRootEntry { owner, id, root_idx },
-			Some(EntryPath { root: root_idx, bundle_idx: Some(bundle_idx)}) => Self::ListBundleEntry { owner, id, root_idx, bundle_idx },
+			Some(EntryPath {
+				root: root_idx,
+				bundle_idx: None,
+			}) => Self::ListRootEntry { owner, id, root_idx },
+			Some(EntryPath {
+				root: root_idx,
+				bundle_idx: Some(bundle_idx),
+			}) => Self::ListBundleEntry {
+				owner,
+				id,
+				root_idx,
+				bundle_idx,
+			},
 		}
 	}
 
