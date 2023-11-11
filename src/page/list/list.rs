@@ -487,7 +487,7 @@ fn entry_cards(
 	remove: Callback<EntryPath>,
 ) -> Html {
 	html! {
-		<div class="d-flex flex-wrap">
+		<div class="d-flex flex-wrap justify-content-center">
 			<div class="card entry m-2">
 				<div class="card-body d-flex align-items-center justify-content-center">
 					<button class="btn btn-success" onclick={add.reform(|_| ())}>
@@ -892,8 +892,8 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 			let set_cost = set_cost.map(|_| ());
 
 			html! {
-				<div class="d-flex">
-					<div>
+				<div class="d-flex flex-wrap">
+					<div class="me-3">
 						<img
 							class="rounded mb-1"
 							src={specific.image_url.clone()}
@@ -909,7 +909,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 							/>
 						</div>
 					</div>
-					<div class="ms-3 flex-fill">
+					<div class="flex-fill">
 						<div class="mb-3">
 							<label for="offer-url" class="form-label">{"Offer Url"}</label>
 							<input
@@ -966,8 +966,8 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 			let set_cost = set_cost.map(|_| ());
 
 			html! {
-				<div class="d-flex">
-					<div>
+				<div class="d-flex flex-wrap">
+					<div class="me-3">
 						<img
 							class="rounded mb-1"
 							src={idea.image_url.clone()}
@@ -983,7 +983,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 							/>
 						</div>
 					</div>
-					<div class="ms-3 flex-fill">
+					<div class="flex-fill">
 						<div class="mb-3">
 							<label for="cost" class="form-label">{"Estimated Cost"}</label>
 							<div class="input-group">
