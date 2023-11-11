@@ -1,18 +1,19 @@
 use crate::{
 	components::{Tag, Tags},
 	data::{Entry, Kind, KindId, List as ListData},
-	database::{query::use_query_discrete, List as ListRecord, ListId, Database},
+	database::{query::use_query_discrete, Database, List as ListRecord, ListId},
 	util::web_ext::{validate_uint_only, CallbackExt, CallbackOptExt, InputExt},
 	Route,
 };
 use derivative::Derivative;
 use enumset::EnumSet;
 use itertools::{Itertools, Position};
-use kdlize::{AsKdl, NodeId, ext::NodeExt};
+use kdlize::{ext::NodeExt, AsKdl, NodeId};
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	rc::Rc,
-	str::FromStr, sync::atomic::AtomicBool,
+	str::FromStr,
+	sync::atomic::AtomicBool,
 };
 use yew::prelude::*;
 use yew_router::prelude::{use_navigator, Link};
@@ -24,9 +25,9 @@ struct EditableList {
 	id: Rc<ListId>,
 	record: Rc<ListRecord>,
 	data: ListData,
-	#[derivative(PartialEq="ignore")]
+	#[derivative(PartialEq = "ignore")]
 	database: Database,
-	#[derivative(PartialEq="ignore")]
+	#[derivative(PartialEq = "ignore")]
 	save_to_storage_timeout: Option<Rc<AtomicBool>>,
 }
 enum EditableAction {
@@ -53,7 +54,10 @@ impl Reducible for EditableList {
 				log::debug!("{:?}", editable.data);
 				Rc::new(editable)
 			}
-			EditableAction::SavedToDatabase { record, save_to_storage_timeout } => {
+			EditableAction::SavedToDatabase {
+				record,
+				save_to_storage_timeout,
+			} => {
 				let mut editable = (*self).clone();
 				editable.record = record;
 				// If a mutation occurs while we are waiting to save to storage, mark the prev timeout as cancelled.
@@ -111,7 +115,7 @@ impl EditableListHandle {
 
 			record.kdl = kdl.clone();
 			record.pending_changes.push((message, kdl));
-	
+
 			let transaction = self.database.write()?;
 			transaction.put_ref(&record).await?;
 			transaction.commit().await?;
@@ -119,55 +123,12 @@ impl EditableListHandle {
 			let was_canceled = Rc::new(AtomicBool::new(false));
 			let timeout = gloo_timers::callback::Timeout::new(1000 * 30, {
 				let handle = self.clone();
-				let pending_changes = record.pending_changes.clone();
 				let was_canceled = was_canceled.clone();
 				move || {
 					if was_canceled.load(std::sync::atomic::Ordering::Relaxed) {
 						return;
 					}
-					crate::util::spawn_local("wishlist", async move {
-						let auth_info = yewdux::dispatch::get::<crate::auth::Info>();
-						let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
-						let Some(storage) = crate::storage::get(&*auth_status) else {
-							return Err(anyhow::anyhow!("Failed to create storage."));
-						};
-						let Some(mut user) = handle.database.get::<crate::database::User>(auth_info.name.as_str()).await? else {
-							return Err(anyhow::anyhow!(format!("Missing user record for {:?}", auth_info.name)));
-						};
-
-						let Some(mut record) = handle.database.get::<ListRecord>(&handle.record.id).await? else {
-							return Err(anyhow::anyhow!(format!("List record {:?} went missing.", handle.record.id)));
-						};
-						record.pending_changes = Vec::new();
-
-						// generate commits for each pending change and push them to storage.
-						// there is no method to the github api for pushing multiple commits at once,
-						// so we must accept the non-atomic "sequentially push each commit".
-						let file_name = format!("{}.kdl", handle.id.id);
-						for (message, content) in pending_changes {
-							let args = github::repos::contents::update::Args {
-								repo_org: &auth_info.name,
-								repo_name: crate::storage::USER_DATA_REPO_NAME,
-								path_in_repo: std::path::Path::new(&file_name),
-								commit_message: &message,
-								content: &content,
-								file_id: Some(&record.file_id),
-								branch: None,
-							};
-							let response = storage.create_or_update_file(args).await?;
-							record.file_id = response.file_id;
-							record.local_version = response.version;
-						}
-						user.local_version = record.local_version.clone();
-	
-						let transaction = handle.database.write()?;
-						transaction.put_ref(&user).await?;
-						transaction.put_ref(&record).await?;
-						transaction.commit().await?;
-						
-						handle.dispatch(EditableAction::SavedToStorage { record: Rc::new(record) });
-						Ok(()) as anyhow::Result<()>
-					});
+					handle.save_to_storage();
 				}
 			});
 			timeout.forget();
@@ -176,9 +137,66 @@ impl EditableListHandle {
 				record: Rc::new(record),
 				save_to_storage_timeout: was_canceled,
 			});
-	
+
 			Ok(()) as anyhow::Result<()>
 		});
+	}
+
+	fn save_to_storage(self) {
+		crate::util::spawn_local("wishlist", async move {
+			let auth_info = yewdux::dispatch::get::<crate::auth::Info>();
+			let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+			let Some(storage) = crate::storage::get(&*auth_status) else {
+				return Err(anyhow::anyhow!("Failed to create storage."));
+			};
+			let Some(mut user) = self.database.get::<crate::database::User>(auth_info.name.as_str()).await? else {
+				return Err(anyhow::anyhow!(format!("Missing user record for {:?}", auth_info.name)));
+			};
+
+			let Some(mut record) = self.database.get::<ListRecord>(&self.record.id).await? else {
+				return Err(anyhow::anyhow!(format!("List record {:?} went missing.", self.record.id)));
+			};
+			let mut pending_changes = Vec::new();
+			std::mem::swap(&mut pending_changes, &mut record.pending_changes);
+
+			// generate commits for each pending change and push them to storage.
+			// there is no method to the github api for pushing multiple commits at once,
+			// so we must accept the non-atomic "sequentially push each commit".
+			let file_name = format!("{}.kdl", self.id.id);
+			for (message, content) in pending_changes {
+				let args = github::repos::contents::update::Args {
+					repo_org: &auth_info.name,
+					repo_name: crate::storage::USER_DATA_REPO_NAME,
+					path_in_repo: std::path::Path::new(&file_name),
+					commit_message: &message,
+					content: &content,
+					file_id: Some(&record.file_id),
+					branch: None,
+				};
+				let response = storage.create_or_update_file(args).await?;
+				record.file_id = response.file_id;
+				record.local_version = response.version;
+			}
+			user.local_version = record.local_version.clone();
+
+			let transaction = self.database.write()?;
+			transaction.put_ref(&user).await?;
+			transaction.put_ref(&record).await?;
+			transaction.commit().await?;
+
+			self.dispatch(EditableAction::SavedToStorage {
+				record: Rc::new(record),
+			});
+			Ok(()) as anyhow::Result<()>
+		});
+	}
+
+	fn force_save_to_storage(&self) {
+		// If a mutation occurs while we are waiting to save to storage, mark the prev timeout as cancelled.
+		if let Some(cancel_prev_timeout) = &self.save_to_storage_timeout {
+			cancel_prev_timeout.store(true, std::sync::atomic::Ordering::Relaxed);
+		}
+		self.clone().save_to_storage();
 	}
 
 	pub fn mutate_entry<F>(&self, path: &EntryPath, mutator: F)
@@ -187,11 +205,9 @@ impl EditableListHandle {
 	{
 		self.mutate({
 			let path = path.clone();
-			move |list| {
-				match path.resolve_mut(list) {
-					Some(entry) => mutator(entry),
-					None => None,
-				}
+			move |list| match path.resolve_mut(list) {
+				Some(entry) => mutator(entry),
+				None => None,
 			}
 		});
 	}
@@ -206,58 +222,52 @@ impl EditableListHandle {
 		let mutator = Rc::new(mutator);
 		Callback::from(move |value: T| {
 			let mutator = mutator.clone();
-			list.mutate_entry(&path, move |entry| {
-				mutator(value, entry)
-			});
+			list.mutate_entry(&path, move |entry| mutator(value, entry));
 		})
 	}
 
 	fn add_entry(&self, dst_path: EntryPath, entry: Entry) {
-		self.mutate(move |data| {
-			match dst_path.bundle_idx {
-				None => {
-					let dst_index = dst_path.root.min(data.entries.len());
-					data.entries.insert(dst_index, entry);
-					Some(format!("Add item"))
-				}
-				Some(bundle_idx) => {
-					let Some(bundle_entry) = data.entries.get_mut(dst_path.root) else {
+		self.mutate(move |data| match dst_path.bundle_idx {
+			None => {
+				let dst_index = dst_path.root.min(data.entries.len());
+				data.entries.insert(dst_index, entry);
+				Some(format!("Add item"))
+			}
+			Some(bundle_idx) => {
+				let Some(bundle_entry) = data.entries.get_mut(dst_path.root) else {
 						return None;
 					};
-					let Kind::Bundle(bundle) = &mut bundle_entry.kind else {
+				let Kind::Bundle(bundle) = &mut bundle_entry.kind else {
 						return None;
 					};
-					let dst_index = bundle_idx.min(bundle.entries.len());
-					bundle.entries.insert(dst_index, entry);
-					Some(format!("Add item to bundle"))
-				}
+				let dst_index = bundle_idx.min(bundle.entries.len());
+				bundle.entries.insert(dst_index, entry);
+				Some(format!("Add item to bundle"))
 			}
 		});
 	}
 
 	fn remove_entry(&self, path: EntryPath) {
-		self.mutate(move |data| {
-			match path.bundle_idx {
-				None => {
-					if data.entries.get(path.root).is_none() {
-						return None;
-					}
-					let entry = data.entries.remove(path.root);
-					Some(format!("Remove item {}", entry.name))
+		self.mutate(move |data| match path.bundle_idx {
+			None => {
+				if data.entries.get(path.root).is_none() {
+					return None;
 				}
-				Some(bundle_idx) => {
-					let Some(entry) = data.entries.get_mut(path.root) else {
+				let entry = data.entries.remove(path.root);
+				Some(format!("Remove item {}", entry.name))
+			}
+			Some(bundle_idx) => {
+				let Some(entry) = data.entries.get_mut(path.root) else {
 						return None;
 					};
-					let Kind::Bundle(bundle) = &mut entry.kind else {
+				let Kind::Bundle(bundle) = &mut entry.kind else {
 						return None;
 					};
-					if bundle.entries.get(bundle_idx).is_none() {
-						return None;
-					}
-					let removed = bundle.entries.remove(bundle_idx);
-					Some(format!("Remove item {} from bundle {}", removed.name, entry.name))
+				if bundle.entries.get(bundle_idx).is_none() {
+					return None;
 				}
+				let removed = bundle.entries.remove(bundle_idx);
+				Some(format!("Remove item {} from bundle {}", removed.name, entry.name))
 			}
 		});
 	}
@@ -408,8 +418,21 @@ fn ListContent() -> Html {
 
 	html! {
 		<div class="list page">
-			<h2>{&list.data.name}</h2>
-			<div>{format!("Invited Users: {:?}", list.data.invitees)}</div>
+			<div class="d-flex">
+				<h2>{&list.data.name}</h2>
+				{(!list.record.pending_changes.is_empty()).then(|| html!(
+					<div class="alert alert-warning ms-auto mb-0 p-2 d-flex align-items-center" role="alert">
+						<div>{list.record.pending_changes.len()}{" pending changes to save"}</div>
+						<button class="btn btn-success btn-sm ms-3" onclick={Callback::from({
+							let handle = list.clone();
+							move |_| handle.force_save_to_storage()
+						})}>
+							<i class="bi bi-floppy" />
+							{"Save Now"}
+						</button>
+					</div>
+				))}
+			</div>
 
 			<div class="d-flex">
 				<button class="btn btn-success btn-sm me-3" onclick={invite_user}>
@@ -446,12 +469,23 @@ fn ListContent() -> Html {
 				}).collect::<Vec<_>>()}
 			</Tags>
 
-			{entry_cards(&list.id, None, &list.data.entries, add_entry, delete_entry)}
+			{entry_cards(
+				&list.id, None, &list.data.entries,
+				Some(tag_filter.clone()),
+				add_entry, delete_entry
+			)}
 		</div>
 	}
 }
 
-fn entry_cards(list_id: &ListId, parent: Option<EntryPath>, entries: &Vec<Entry>, add: Callback<()>, remove: Callback<EntryPath>) -> Html {
+fn entry_cards(
+	list_id: &ListId,
+	parent: Option<EntryPath>,
+	entries: &Vec<Entry>,
+	tag_filter: Option<UseStateHandle<BTreeSet<AttrValue>>>,
+	add: Callback<()>,
+	remove: Callback<EntryPath>,
+) -> Html {
 	html! {
 		<div class="d-flex flex-wrap">
 			<div class="card entry m-2">
@@ -469,7 +503,7 @@ fn entry_cards(list_id: &ListId, parent: Option<EntryPath>, entries: &Vec<Entry>
 				};
 				let route = Route::new_list_entry(list_id.clone(), Some(path));
 				let delete = remove.reform(move |_| path);
-				html!(<EntryCard {path} {route} {delete} />)
+				html!(<EntryCard {path} {route} {delete} tag_filter={tag_filter.clone()} />)
 			}).collect::<Vec<_>>()}
 		</div>
 	}
@@ -554,6 +588,7 @@ struct EntryCardProps {
 	path: EntryPath,
 	route: Route,
 	delete: Callback<()>,
+	tag_filter: Option<UseStateHandle<BTreeSet<AttrValue>>>,
 }
 #[function_component]
 fn EntryCard(props: &EntryCardProps) -> Html {
@@ -561,6 +596,7 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 		path,
 		route,
 		delete,
+		tag_filter,
 	} = props;
 	let list = use_context::<EditableListHandle>().unwrap();
 	let auth_info = use_store_value::<crate::auth::Info>();
@@ -568,8 +604,17 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 		return html!("404 entry not found - todo better card");
 	};
 	let is_owner = list.record.id.starts_with(&auth_info.name);
-
 	let kind_id = entry.kind.id().to_string();
+
+	if let Some(filter) = tag_filter {
+		if !filter.is_empty() {
+			let filter = filter.iter().map(AttrValue::as_str).collect::<BTreeSet<_>>();
+			let tags = entry.tags.iter().map(String::as_str).collect::<BTreeSet<_>>();
+			if filter.intersection(&tags).count() == 0 {
+				return html!();
+			}
+		}
+	}
 
 	let image_urls = entry.kind.image_urls();
 	let image = match image_urls.len() {
@@ -685,7 +730,12 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 	let set_kind = set_kind.map_some(|id_str| KindId::from_str(&id_str).ok());
 	let set_kind = set_kind
 		.then_emit(list.mutate_entry_callback(path, |id: KindId, entry: &mut Entry| {
-			let msg = format!("Change item kind for {:?} from {:?} to {:?}", entry.name, entry.kind.id(), id);
+			let msg = format!(
+				"Change item kind for {:?} from {:?} to {:?}",
+				entry.name,
+				entry.kind.id(),
+				id
+			);
 			entry.kind = id.into();
 			Some(msg)
 		}))
@@ -815,7 +865,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 			let set_image_url: Callback<Event> = set_image_url
 				.filter_reform(|evt: web_sys::Event| evt.input_value())
 				.map(|_| ());
-			
+
 			let set_offer_url = list.mutate_entry_callback(path, |value: String, entry: &mut Entry| {
 				let Kind::Specific(specific) = &mut entry.kind else {
 					return None;
@@ -826,7 +876,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 			let set_offer_url: Callback<Event> = set_offer_url
 				.filter_reform(|evt: web_sys::Event| evt.input_value())
 				.map(|_| ());
-			
+
 			let set_cost = Callback::from(|evt: web_sys::Event| evt.input_value());
 			let set_cost = set_cost.map_some(|value| match value.is_empty() {
 				true => Some(0),
@@ -840,7 +890,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 				Some(format!("Update cost per unit for item {:?}", entry.name))
 			}));
 			let set_cost = set_cost.map(|_| ());
-			
+
 			html! {
 				<div class="d-flex">
 					<div>
@@ -900,7 +950,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 			let set_image_url: Callback<Event> = set_image_url
 				.filter_reform(|evt: web_sys::Event| evt.input_value())
 				.map(|_| ());
-			
+
 			let set_cost = Callback::from(|evt: web_sys::Event| evt.input_value());
 			let set_cost = set_cost.map_some(|value| match value.is_empty() {
 				true => Some(0),
@@ -914,7 +964,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 				Some(format!("Update estimated cost per unit for item {:?}", entry.name))
 			}));
 			let set_cost = set_cost.map(|_| ());
-			
+
 			html! {
 				<div class="d-flex">
 					<div>
@@ -976,7 +1026,7 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 					list.remove_entry(path);
 				}
 			});
-			entry_cards(&list.id, Some(*path), &bundle.entries, add, remove)
+			entry_cards(&list.id, Some(*path), &bundle.entries, None, add, remove)
 		}
 	};
 

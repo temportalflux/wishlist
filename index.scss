@@ -55,6 +55,14 @@ body {
 .page {
 	padding: 20px;
 }
+.page.list {
+	> .tags {
+		justify-content: center;
+		> .tag {
+			font-size: 1.0rem;
+		}
+	}
+}
 
 .entry.card {
 	width: 300px;
