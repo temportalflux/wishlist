@@ -75,6 +75,7 @@ pub struct List {
 	pub file_id: String,
 	pub kdl: String,
 	pub local_version: String,
+	pub pending_changes: Vec<(String, String)>,
 }
 
 impl Record for List {

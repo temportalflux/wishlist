@@ -30,7 +30,7 @@ impl AsKdl for Specific {
 		if let Some(url) = &self.image_url {
 			node.push_child_t("image", url);
 		}
-		node.push_child_t("offer", &self.offer_url);
+		node.push_child_entry("offer", self.offer_url.as_str());
 		node.push_child_entry("cost_per_unit", self.cost_per_unit as i64);
 		node
 	}

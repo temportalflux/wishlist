@@ -33,7 +33,10 @@ pub fn Collection() -> HtmlResult {
 			</div>
 			<div class="d-flex">
 				{match query_lists.status() {
-					Err(_) => html!("No wishlists TODO improve this display"),
+					Err(err) => {
+						log::error!(target: "wishlist", "{err:?}");
+						html!("No wishlists TODO improve this display")
+					}
 					Ok(lists) => {
 						let iter = lists.iter();
 						let iter = iter.filter_map(|(id, (record, list))| match ListId::from_str(&id) {
@@ -101,6 +104,7 @@ fn ButtonCreateList(GeneralProp { value }: &GeneralProp<Callback<()>>) -> Html {
 					file_id: response.file_id,
 					kdl: content,
 					local_version: response.version,
+					pending_changes: Vec::new(),
 				};
 
 				database.write()?.put(&user).await?.put(&record).await?.commit().await?;

@@ -307,6 +307,7 @@ async fn process_request(req: Request, database: &Database, status: &Status) -> 
 							file_id,
 							kdl: content,
 							local_version: repository.version.clone(),
+							pending_changes: Vec::new(),
 						});
 					}
 				}
@@ -356,6 +357,7 @@ async fn process_request(req: Request, database: &Database, status: &Status) -> 
 									file_id: changed_file.file_id,
 									kdl: content,
 									local_version: repository.version.clone(),
+									pending_changes: Vec::new(),
 								});
 							}
 						}
