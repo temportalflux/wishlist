@@ -19,6 +19,7 @@ fn sort_lists(a: &(ListId, &ListRecord, &List), b: &(ListId, &ListRecord, &List)
 
 #[function_component]
 pub fn Collection() -> HtmlResult {
+	let auth_info = use_store_value::<crate::auth::Info>();
 	let query_lists = use_query_all::<crate::data::List>()?;
 	let refresh_lists = Callback::from({
 		let query_lists = query_lists.get_trigger().clone();
@@ -40,7 +41,7 @@ pub fn Collection() -> HtmlResult {
 					Ok(lists) => {
 						let iter = lists.iter();
 						let iter = iter.filter_map(|(id, (record, list))| match ListId::from_str(&id) {
-							Ok(id) => Some((id, record, list)),
+							Ok(id) if id.owner == auth_info.name => Some((id, record, list)),
 							_ => None,
 						});
 						let iter = iter.sorted_by(sort_lists);
