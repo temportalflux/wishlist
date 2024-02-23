@@ -647,7 +647,7 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 					onclick={delete.reform(|_| ())}
 				/>))}
 			</div>
-			<div class="d-flex justify-content-center mt-2">
+			<div class="card-img-container mt-2">
 				{image}
 			</div>
 			<div class="card-body">

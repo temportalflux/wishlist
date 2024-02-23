@@ -69,10 +69,18 @@ body {
 	> .card-header > .bi-trash {
 		color: var(--bs-danger);
 	}
-	.card-img {
-		width: auto;
-		max-height: 200px;
-		max-width: 250px;
+	.card-img-container {
+		display: flex;
+		justify-content: center;
+		height: 200px;
+		> .card-img {
+			width: auto;
+			height: auto;
+			max-height: 200px;
+			max-width: 250px;
+			margin-top: auto !important;
+			margin-bottom: auto !important;
+		}
 	}
 }
 .entry.card.specific {
