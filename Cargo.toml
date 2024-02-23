@@ -21,7 +21,7 @@ thiserror = "1.0"
 
 futures = "0.3"
 futures-util = "0.3"
-async-channel = "1.8"
+async-channel = "2.2"
 
 serde = "1.0"
 serde_json = "1.0"
@@ -46,11 +46,11 @@ web-sys = { version = "0.3", features = [
 	"UiEvent", "CssStyleDeclaration",
 	"IdbFactory", "IdbOpenDbRequest",
 ] }
-idb = "0.4"
+idb = "0.6"
 
 yew = { version = "0.21", features = ["csr"] }
 yew-router = { version = "0.18" }
-yewdux = "0.9"
+yewdux = "0.10"
 yew-hooks = "0.3"
 
 reqwest = { version = "0.11", features = ["json"] }
@@ -64,9 +64,9 @@ derivative = "2.2"
 dyn-clone = "1.0"
 enum-map = "2.6"
 enumset = "1.0"
-itertools = "0.11"
+itertools = "0.12"
 lazy_static = "1.4"
-multimap = "0.9"
+multimap = "0.10"
 num-traits = "0.2"
 phf = { version = "0.11", features = ["macros"] }
 rand = "0.8"

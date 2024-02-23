@@ -1,5 +1,5 @@
 use super::{List, User};
-use database::{Client, Error, MissingVersion, Record, Schema, Transaction};
+use database::{Client, Error, MissingVersion, Record, Schema};
 
 pub enum SchemaVersion {
 	Version1 = 1,
@@ -21,7 +21,7 @@ impl Schema for SchemaVersion {
 		Self::Version1 as u32
 	}
 
-	fn apply(&self, database: &Client, _transaction: Option<&Transaction>) -> Result<(), Error> {
+	fn apply(&self, database: &Client) -> Result<(), Error> {
 		match self {
 			Self::Version1 => {
 				// Create lists table

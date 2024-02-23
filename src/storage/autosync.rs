@@ -4,6 +4,7 @@ use github::ChangedFileStatus;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
+use yewdux::prelude::Dispatch;
 
 mod query_viewer;
 use query_viewer::*;
@@ -178,7 +179,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 }
 
 async fn process_request(req: Request, database: &Database, status: &Status) -> Result<(), StorageSyncError> {
-	let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+	let auth_status = Dispatch::<crate::auth::Status>::global().get();
 	let Some(storage) = crate::storage::get(&*auth_status) else {
 		log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
 		return Ok(());
@@ -198,7 +199,7 @@ async fn process_request(req: Request, database: &Database, status: &Status) -> 
 	let (user, data_repo) = query_viewer.run().await?;
 	status.pop_stage();
 
-	yewdux::dispatch::set(crate::auth::Info { name: user.clone() });
+	Dispatch::<crate::auth::Info>::global().set(crate::auth::Info { name: user.clone() });
 
 	let repository = match data_repo {
 		Some(repo) => repo,

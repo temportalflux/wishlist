@@ -17,7 +17,7 @@ use std::{
 };
 use yew::prelude::*;
 use yew_router::prelude::{use_navigator, Link};
-use yewdux::prelude::use_store_value;
+use yewdux::prelude::{use_store_value, Dispatch};
 
 #[derive(Clone, Derivative)]
 #[derivative(PartialEq)]
@@ -144,8 +144,8 @@ impl EditableListHandle {
 
 	fn save_to_storage(self) {
 		crate::util::spawn_local("wishlist", async move {
-			let auth_info = yewdux::dispatch::get::<crate::auth::Info>();
-			let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+			let auth_info = Dispatch::<crate::auth::Info>::global().get();
+			let auth_status = Dispatch::<crate::auth::Status>::global().get();
 			let Some(storage) = crate::storage::get(&*auth_status) else {
 				return Err(anyhow::anyhow!("Failed to create storage."));
 			};

@@ -3,10 +3,6 @@ use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement, KeyboardEvent};
 use yew::prelude::Callback;
 
-pub fn callback<T>() -> Callback<T, T> {
-	Callback::from(|v| v)
-}
-
 pub fn validate_uint_only() -> Callback<KeyboardEvent> {
 	Callback::from(|evt: KeyboardEvent| {
 		if !evt.cancelable() {

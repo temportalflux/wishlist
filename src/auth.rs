@@ -48,7 +48,8 @@ pub fn LoginButton() -> Html {
 	let disabled = autosync_status.is_active();
 	if matches!(*auth_status, Status::Successful { .. }) {
 		let onclick = auth.logout_callback().reform(|_: MouseEvent| {
-			yewdux::dispatch::set(crate::auth::Info::default());
+			let global_info = Dispatch::<crate::auth::Info>::global();
+			global_info.set(crate::auth::Info::default());
 			()
 		});
 		html! {
