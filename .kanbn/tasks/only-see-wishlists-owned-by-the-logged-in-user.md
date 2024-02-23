@@ -1,10 +1,11 @@
 ---
 created: 2024-02-23T20:25:10.824Z
-updated: 2024-02-23T21:10:09.925Z
+updated: 2024-02-23T22:54:57.973Z
 assigned: ""
-progress: 0
-tags: []
-completed: 2024-02-23T21:06:13.291Z
+progress: 1
+tags:
+  - Bug
+completed: 2024-02-23T00:00:00.000Z
 ---
 
 # Only see wishlists owned by the logged in user

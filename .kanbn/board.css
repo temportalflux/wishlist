@@ -1,0 +1,32 @@
+/* Columns */
+
+.kanbn-column-backlog .kanbn-column-task-list {
+	border-color: var(--vscode-activityBar-inactiveForeground);
+	border-color: #843bb5;
+}
+
+.kanbn-column-pending .kanbn-column-task-list {
+	border-color: #ffc400;
+}
+
+.kanbn-column-done .kanbn-column-task-list {
+	border-color: #0067cf;
+}
+
+/* Tags */
+
+.kanbn-task-tag-ux {
+	background-color: rgb(144, 92, 255)
+}
+
+.kanbn-task-tag-ui {
+	background-color: rgb(21, 184, 0)
+}
+
+.kanbn-task-tag-feature {
+	background-color: rgb(61, 165, 255)
+}
+
+.kanbn-task-tag-bug {
+	background-color: rgb(231, 59, 21)
+}
