@@ -29,7 +29,7 @@ pub fn Collection() -> HtmlResult {
 	});
 	Ok(html! {
 		<div class="d-flex flex-column list-collection">
-			<div class="d-flex justify-content-center">
+			<div class="d-flex justify-content-center mb-2">
 				<ButtonCreateList value={refresh_lists.clone()} />
 			</div>
 			<div class="d-flex">
@@ -188,6 +188,10 @@ fn ListCard(props: &ListCardProps) -> Html {
 				/>
 			</div>
 			<div class="card-body">
+				<div>
+					<span class="me-1">{"Owner:"}</span>
+					<span>{&props.id.owner}</span>
+				</div>
 			</div>
 			<div class="card-footer">
 				<button class="btn btn-primary" onclick={Callback::from({

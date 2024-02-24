@@ -9,7 +9,6 @@ completedColumns:
 
 ## Backlog
 
-- [flex-ify-logged-in-homepage-so-that-create-button-and-list-entries-have-proper-layout-and-margins](tasks/flex-ify-logged-in-homepage-so-that-create-button-and-list-entries-have-proper-layout-and-margins.md)
 - [reorder-items-in-list-using-drag-drop](tasks/reorder-items-in-list-using-drag-drop.md)
 - [make-home-page-wishlists-look-better](tasks/make-home-page-wishlists-look-better.md)
 - [user-can-rename-wishlists](tasks/user-can-rename-wishlists.md)
@@ -25,5 +24,6 @@ completedColumns:
 
 ## Done
 
+- [flex-ify-logged-in-homepage-so-that-create-button-and-list-entries-have-proper-layout-and-margins](tasks/flex-ify-logged-in-homepage-so-that-create-button-and-list-entries-have-proper-layout-and-margins.md)
 - [only-see-wishlists-owned-by-the-logged-in-user](tasks/only-see-wishlists-owned-by-the-logged-in-user.md)
 - [normalize-vertical-position-of-title-on-item-cards](tasks/normalize-vertical-position-of-title-on-item-cards.md)

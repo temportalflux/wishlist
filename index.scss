@@ -39,7 +39,10 @@ body {
 }
 
 .list-collection {
+	margin: 1.5rem;
 	.list.card {
+		--bs-card-spacer-x: 0.5rem;
+    --bs-card-spacer-y: 0.5rem;
 		> .card-header > .bi-trash {
 			color: var(--bs-danger);
 		}
