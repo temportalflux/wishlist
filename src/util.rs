@@ -1,4 +1,5 @@
 pub mod error;
+pub mod touch_drag_drop;
 pub mod web_ext;
 
 pub fn spawn_local<F, E>(target: &'static str, future: F)

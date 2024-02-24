@@ -11,7 +11,7 @@ use itertools::{Itertools, Position};
 use kdlize::{ext::NodeExt, AsKdl, NodeId};
 use std::{
 	collections::{BTreeMap, BTreeSet},
-	num::{ParseIntError},
+	num::ParseIntError,
 	rc::Rc,
 	str::FromStr,
 	sync::atomic::AtomicBool,
@@ -290,8 +290,13 @@ impl EditableListHandle {
 			if src.is_sibling_and_before(&adjusted_dst) {
 				adjusted_dst.decrement();
 			}
-			let Some(entry) = src.remove_at(data) else { return None; };
-			let changelog = format!("Moved item {} from {} to {} (adjusted to {})", entry.name, src, dst, adjusted_dst);
+			let Some(entry) = src.remove_at(data) else {
+				return None;
+			};
+			let changelog = format!(
+				"Moved item {} from {} to {} (adjusted to {})",
+				entry.name, src, dst, adjusted_dst
+			);
 			let success = adjusted_dst.insert_at(data, entry);
 			assert!(success);
 			Some(changelog)
@@ -424,7 +429,6 @@ fn ListContent() -> Html {
 		}
 	});
 
-	
 	let invite_user = Callback::from({
 		let list = list.clone();
 		move |_| {}
@@ -557,10 +561,16 @@ pub struct DropTargetProps {
 	pub path: EntryPath,
 	pub move_entry: Callback<(EntryPath, EntryPath)>,
 	#[prop_or_default]
-  pub children: Html,
+	pub children: Html,
 }
 #[function_component]
-fn DropTarget(DropTargetProps { path, move_entry, children }: &DropTargetProps) -> Html {
+fn DropTarget(
+	DropTargetProps {
+		path,
+		move_entry,
+		children,
+	}: &DropTargetProps,
+) -> Html {
 	let node = use_node_ref();
 	let drop = use_drop_with_options(
 		node.clone(),
@@ -569,9 +579,15 @@ fn DropTarget(DropTargetProps { path, move_entry, children }: &DropTargetProps) 
 				let move_entry = move_entry.clone();
 				let dst_path = path.clone();
 				Box::new(move |e| {
-					let Some(data_transfer) = e.data_transfer() else { return; };
-					let Ok(entry_path_str) = data_transfer.get_data("entry_path") else { return; };
-					let Ok(src_path) = entry_path_str.parse::<EntryPath>() else { return; };
+					let Some(data_transfer) = e.data_transfer() else {
+						return;
+					};
+					let Ok(entry_path_str) = data_transfer.get_data("entry_path") else {
+						return;
+					};
+					let Ok(src_path) = entry_path_str.parse::<EntryPath>() else {
+						return;
+					};
 					log::debug!("Dropped {src_path:?} on {dst_path:?}");
 					if src_path != dst_path {
 						move_entry.emit((src_path, dst_path));
@@ -738,12 +754,12 @@ impl EntryPath {
 	}
 }
 impl std::fmt::Display for EntryPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			match self.bundle_idx {
-				None => write!(f, "{}", self.root),
-				Some(idx) => write!(f, "{}:{}", self.root, idx),
-			}
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self.bundle_idx {
+			None => write!(f, "{}", self.root),
+			Some(idx) => write!(f, "{}:{}", self.root, idx),
+		}
+	}
 }
 impl FromStr for EntryPath {
 	type Err = ParseEntryPathError;
@@ -799,6 +815,7 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 			..Default::default()
 		},
 	);
+	//crate::util::touch_drag_drop::use_touch_event_delegation(node.clone());
 
 	let Some(entry) = path.resolve_entry(&list.data) else {
 		return html!("404 entry not found - todo better card");

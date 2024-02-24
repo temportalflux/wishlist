@@ -45,6 +45,7 @@ web-sys = { version = "0.3", features = [
 	"Performance", "Screen",
 	"UiEvent", "CssStyleDeclaration",
 	"IdbFactory", "IdbOpenDbRequest",
+	"MouseEventInit",
 ] }
 idb = "0.6"
 
