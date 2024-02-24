@@ -9,7 +9,6 @@ completedColumns:
 
 ## Backlog
 
-- [reorder-items-in-list-using-drag-drop](tasks/reorder-items-in-list-using-drag-drop.md)
 - [make-home-page-wishlists-look-better](tasks/make-home-page-wishlists-look-better.md)
 - [user-can-rename-wishlists](tasks/user-can-rename-wishlists.md)
 - [spec-out-reservation-system](tasks/spec-out-reservation-system.md)
@@ -20,6 +19,7 @@ completedColumns:
 
 ## Pending
 
+- [reorder-items-in-list-using-drag-drop](tasks/reorder-items-in-list-using-drag-drop.md)
 - [spec-out-invite-invitee-gifter-functionality](tasks/spec-out-invite-invitee-gifter-functionality.md)
 
 ## Done

@@ -67,6 +67,21 @@ body {
 	}
 }
 
+.entry.drop-target {
+	display: flex;
+	flex-direction: row;
+}
+.entry.drop-target > .marker {
+	width: 1px;
+	border-style: dashed;
+	border-width: 1px;
+	border-color: #00000000;
+}
+.entry.drop-target.dropping-over > .marker {
+	width: 0px;
+	border-color: #555555ff;
+}
+
 .entry.card {
 	width: 300px;
 	> .card-header > .bi-trash {
@@ -85,6 +100,9 @@ body {
 			margin-bottom: auto !important;
 		}
 	}
+}
+.entry.card.dragging {
+	opacity: 50%;
 }
 .entry.card.specific {
 	--bs-card-border-color: rgb(0 93 255 / 60%);

@@ -11,11 +11,13 @@ use itertools::{Itertools, Position};
 use kdlize::{ext::NodeExt, AsKdl, NodeId};
 use std::{
 	collections::{BTreeMap, BTreeSet},
+	num::{ParseIntError},
 	rc::Rc,
 	str::FromStr,
 	sync::atomic::AtomicBool,
 };
 use yew::prelude::*;
+use yew_hooks::{use_drag_with_options, use_drop_with_options, UseDragOptions, UseDropOptions};
 use yew_router::prelude::{use_navigator, Link};
 use yewdux::prelude::{use_store_value, Dispatch};
 
@@ -110,7 +112,10 @@ impl EditableListHandle {
 	fn save_to_database(self, message: String, kdl: String) {
 		crate::util::spawn_local("wishlist", async move {
 			let Some(mut record) = self.database.get::<ListRecord>(&self.record.id).await? else {
-				return Err(anyhow::anyhow!(format!("List record {:?} went missing.", self.record.id)));
+				return Err(anyhow::anyhow!(format!(
+					"List record {:?} went missing.",
+					self.record.id
+				)));
 			};
 
 			record.kdl = kdl.clone();
@@ -149,12 +154,19 @@ impl EditableListHandle {
 			let Some(storage) = crate::storage::get(&*auth_status) else {
 				return Err(anyhow::anyhow!("Failed to create storage."));
 			};
-			let Some(mut user) = self.database.get::<crate::database::User>(auth_info.name.as_str()).await? else {
+			let Some(mut user) = self
+				.database
+				.get::<crate::database::User>(auth_info.name.as_str())
+				.await?
+			else {
 				return Err(anyhow::anyhow!(format!("Missing user record for {:?}", auth_info.name)));
 			};
 
 			let Some(mut record) = self.database.get::<ListRecord>(&self.record.id).await? else {
-				return Err(anyhow::anyhow!(format!("List record {:?} went missing.", self.record.id)));
+				return Err(anyhow::anyhow!(format!(
+					"List record {:?} went missing.",
+					self.record.id
+				)));
 			};
 			let mut pending_changes = Vec::new();
 			std::mem::swap(&mut pending_changes, &mut record.pending_changes);
@@ -235,11 +247,11 @@ impl EditableListHandle {
 			}
 			Some(bundle_idx) => {
 				let Some(bundle_entry) = data.entries.get_mut(dst_path.root) else {
-						return None;
-					};
+					return None;
+				};
 				let Kind::Bundle(bundle) = &mut bundle_entry.kind else {
-						return None;
-					};
+					return None;
+				};
 				let dst_index = bundle_idx.min(bundle.entries.len());
 				bundle.entries.insert(dst_index, entry);
 				Some(format!("Add item to bundle"))
@@ -258,17 +270,31 @@ impl EditableListHandle {
 			}
 			Some(bundle_idx) => {
 				let Some(entry) = data.entries.get_mut(path.root) else {
-						return None;
-					};
+					return None;
+				};
 				let Kind::Bundle(bundle) = &mut entry.kind else {
-						return None;
-					};
+					return None;
+				};
 				if bundle.entries.get(bundle_idx).is_none() {
 					return None;
 				}
 				let removed = bundle.entries.remove(bundle_idx);
 				Some(format!("Remove item {} from bundle {}", removed.name, entry.name))
 			}
+		});
+	}
+
+	fn move_entry(&self, src: EntryPath, dst: EntryPath) {
+		self.mutate(move |data| {
+			let mut adjusted_dst = dst;
+			if src.is_sibling_and_before(&adjusted_dst) {
+				adjusted_dst.decrement();
+			}
+			let Some(entry) = src.remove_at(data) else { return None; };
+			let changelog = format!("Moved item {} from {} to {} (adjusted to {})", entry.name, src, dst, adjusted_dst);
+			let success = adjusted_dst.insert_at(data, entry);
+			assert!(success);
+			Some(changelog)
 		});
 	}
 }
@@ -391,7 +417,14 @@ fn ListContent() -> Html {
 			list.remove_entry(path);
 		}
 	});
+	let move_entry = Callback::from({
+		let list = list.clone();
+		move |(src, dst): (EntryPath, EntryPath)| {
+			list.move_entry(src, dst);
+		}
+	});
 
+	
 	let invite_user = Callback::from({
 		let list = list.clone();
 		move |_| {}
@@ -472,7 +505,7 @@ fn ListContent() -> Html {
 			{entry_cards(
 				&list.id, None, &list.data.entries,
 				Some(tag_filter.clone()),
-				add_entry, delete_entry
+				add_entry, delete_entry, move_entry
 			)}
 		</div>
 	}
@@ -485,31 +518,81 @@ fn entry_cards(
 	tag_filter: Option<UseStateHandle<BTreeSet<AttrValue>>>,
 	add: Callback<()>,
 	remove: Callback<EntryPath>,
+	move_entry: Callback<(EntryPath, EntryPath)>,
 ) -> Html {
+	let make_path = |idx: usize| -> EntryPath {
+		match parent {
+			None => EntryPath::root(idx),
+			Some(path) => path.bundled(idx),
+		}
+	};
 	html! {
 		<div class="d-flex flex-wrap justify-content-center">
-			<div class="card entry m-2">
-				<div class="card-body d-flex align-items-center justify-content-center">
-					<button class="btn btn-success" onclick={add.reform(|_| ())}>
-						<i class="bi bi-plus" />
-						{"Add Item"}
-					</button>
+			<DropTarget path={make_path(0)} move_entry={move_entry.clone()}>
+				<div class="card entry m-2">
+					<div class="card-body d-flex align-items-center justify-content-center">
+						<button class="btn btn-success" onclick={add.reform(|_| ())}>
+							<i class="bi bi-plus" />
+							{"Add Item"}
+						</button>
+					</div>
 				</div>
-			</div>
+			</DropTarget>
 			{entries.iter().enumerate().map(|(idx, _)| {
-				let path = match parent {
-					None => EntryPath::root(idx),
-					Some(path) => path.bundled(idx),
-				};
+				let path = make_path(idx);
 				let route = Route::new_list_entry(list_id.clone(), Some(path));
 				let delete = remove.reform(move |_| path);
-				html!(<EntryCard {path} {route} {delete} tag_filter={tag_filter.clone()} />)
+				html! {
+					<DropTarget path={path.next_sibling()} move_entry={move_entry.clone()}>
+						<EntryCard {path} {route} {delete} tag_filter={tag_filter.clone()} />
+					</DropTarget>
+				}
 			}).collect::<Vec<_>>()}
 		</div>
 	}
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq, Properties)]
+pub struct DropTargetProps {
+	pub path: EntryPath,
+	pub move_entry: Callback<(EntryPath, EntryPath)>,
+	#[prop_or_default]
+  pub children: Html,
+}
+#[function_component]
+fn DropTarget(DropTargetProps { path, move_entry, children }: &DropTargetProps) -> Html {
+	let node = use_node_ref();
+	let drop = use_drop_with_options(
+		node.clone(),
+		UseDropOptions {
+			ondrop: Some({
+				let move_entry = move_entry.clone();
+				let dst_path = path.clone();
+				Box::new(move |e| {
+					let Some(data_transfer) = e.data_transfer() else { return; };
+					let Ok(entry_path_str) = data_transfer.get_data("entry_path") else { return; };
+					let Ok(src_path) = entry_path_str.parse::<EntryPath>() else { return; };
+					log::debug!("Dropped {src_path:?} on {dst_path:?}");
+					if src_path != dst_path {
+						move_entry.emit((src_path, dst_path));
+					}
+				})
+			}),
+			..Default::default()
+		},
+	);
+
+	let drop_cls = drop.over.then_some("dropping-over");
+	let class = classes!("entry", "drop-target", drop_cls);
+	html! {
+		<div ref={node} {class}>
+			{children.clone()}
+			<div class="marker" />
+		</div>
+	}
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct EntryPath {
 	pub root: usize,
 	pub bundle_idx: Option<usize>,
@@ -526,6 +609,36 @@ impl EntryPath {
 		Self {
 			root: self.root,
 			bundle_idx: Some(idx),
+		}
+	}
+
+	pub fn next_sibling(&self) -> Self {
+		match self.bundle_idx {
+			None => Self::root(self.root + 1),
+			Some(idx) => self.bundled(idx + 1),
+		}
+	}
+
+	pub fn is_sibling(&self, other: &Self) -> bool {
+		self.bundle_idx.is_some() == other.bundle_idx.is_some()
+	}
+
+	pub fn is_sibling_and_before(&self, other: &Self) -> bool {
+		match (self.bundle_idx, other.bundle_idx) {
+			(None, None) => self.root < other.root,
+			(Some(a_bidx), Some(b_bidx)) => a_bidx < b_bidx,
+			_ => false,
+		}
+	}
+
+	pub fn decrement(&mut self) {
+		match &mut self.bundle_idx {
+			None => {
+				self.root = self.root.saturating_sub(1);
+			}
+			Some(bidx) => {
+				*bidx = bidx.saturating_sub(1);
+			}
 		}
 	}
 
@@ -581,6 +694,76 @@ impl EntryPath {
 		};
 		bundle.entries.get_mut(bundle_idx)
 	}
+
+	fn insert_at<'list>(&self, list: &'list mut ListData, entry: Entry) -> bool {
+		let root_idx = self.root.min(list.entries.len());
+		match self.bundle_idx {
+			None => {
+				list.entries.insert(root_idx, entry);
+				true
+			}
+			Some(bundle_idx) => {
+				let Some(root_entry) = Self::root(root_idx).resolve_mut(list) else {
+					return false;
+				};
+				let Kind::Bundle(bundle) = &mut root_entry.kind else {
+					return false;
+				};
+				let bundle_idx = bundle_idx.min(bundle.entries.len());
+				bundle.entries.insert(bundle_idx, entry);
+				true
+			}
+		}
+	}
+
+	fn remove_at<'list>(&self, list: &'list mut ListData) -> Option<Entry> {
+		if self.root >= list.entries.len() {
+			return None;
+		}
+		match self.bundle_idx {
+			None => Some(list.entries.remove(self.root)),
+			Some(bundle_idx) => {
+				let Some(entry) = list.entries.get_mut(self.root) else {
+					return None;
+				};
+				let Kind::Bundle(bundle) = &mut entry.kind else {
+					return None;
+				};
+				if bundle_idx >= bundle.entries.len() {
+					return None;
+				}
+				Some(bundle.entries.remove(bundle_idx))
+			}
+		}
+	}
+}
+impl std::fmt::Display for EntryPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+			match self.bundle_idx {
+				None => write!(f, "{}", self.root),
+				Some(idx) => write!(f, "{}:{}", self.root, idx),
+			}
+    }
+}
+impl FromStr for EntryPath {
+	type Err = ParseEntryPathError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let mut args = s.split(':').into_iter();
+		let root = args.next().ok_or(ParseEntryPathError::Empty)?.parse()?;
+		let bundle_idx = match args.next() {
+			None => None,
+			Some(str) => Some(str.parse()?),
+		};
+		Ok(Self { root, bundle_idx })
+	}
+}
+#[derive(thiserror::Error, Debug)]
+pub enum ParseEntryPathError {
+	#[error("Empty value, missing root order")]
+	Empty,
+	#[error(transparent)]
+	InvalidDigit(#[from] ParseIntError),
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -600,6 +783,23 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 	} = props;
 	let list = use_context::<EditableListHandle>().unwrap();
 	let auth_info = use_store_value::<crate::auth::Info>();
+
+	let node = use_node_ref();
+	let drag = use_drag_with_options(
+		node.clone(),
+		UseDragOptions {
+			ondragstart: Some({
+				let path = path.to_string();
+				Box::new(move |e| {
+					if let Some(data_transfer) = e.data_transfer() {
+						let _ = data_transfer.set_data("entry_path", &path);
+					}
+				})
+			}),
+			..Default::default()
+		},
+	);
+
 	let Some(entry) = path.resolve_entry(&list.data) else {
 		return html!("404 entry not found - todo better card");
 	};
@@ -634,8 +834,10 @@ fn EntryCard(props: &EntryCardProps) -> Html {
 		_ => html!(),
 	};
 
+	let drag_cls: Option<&str> = drag.dragging.then_some("dragging");
+	let classes = classes!("card", "entry", "m-2", kind_id.to_lowercase(), drag_cls);
 	html! {
-		<div class={classes!("card", "entry", "m-2", kind_id.to_lowercase())}>
+		<div ref={node} class={classes}>
 			<div class="card-header d-flex align-items-center">
 				<span>{&kind_id}</span>
 				{match entry.quantity {
@@ -1026,7 +1228,13 @@ fn EntryContent(EntryContentProps { path }: &EntryContentProps) -> Html {
 					list.remove_entry(path);
 				}
 			});
-			entry_cards(&list.id, Some(*path), &bundle.entries, None, add, remove)
+			let move_entry = Callback::from({
+				let list = list.clone();
+				move |(src, dst): (EntryPath, EntryPath)| {
+					list.move_entry(src, dst);
+				}
+			});
+			entry_cards(&list.id, Some(*path), &bundle.entries, None, add, remove, move_entry)
 		}
 	};
 

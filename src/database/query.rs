@@ -35,7 +35,9 @@ where
 		let mut cursor = store.cursor_all::<D::Record>().await?;
 		let mut parsed_data = BTreeMap::new();
 		while let Some(record) = cursor.next().await {
-			let Some(key) = record.key() else { continue; };
+			let Some(key) = record.key() else {
+				continue;
+			};
 			let data = D::parse_record(&record)?;
 			parsed_data.insert(key.clone(), (record, data));
 		}
@@ -65,8 +67,8 @@ where
 		let key = &(*args).0;
 
 		let Some(record) = database.get::<D::Record>(key).await? else {
-				return Ok(None);
-			};
+			return Ok(None);
+		};
 		let data = D::parse_record(&record)?;
 		Ok(Some((record, data)))
 	})?;
