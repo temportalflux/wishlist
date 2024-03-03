@@ -11,9 +11,7 @@ kdlize::impl_kdl_node!(User, "user");
 impl AsKdl for User {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		let mut node = kdlize::NodeBuilder::default();
-		for list_id in &self.external_lists {
-			node.push_child_t("external_list", list_id);
-		}
+		node.push_children_t(("external_list", self.external_lists.iter()));
 		node
 	}
 }

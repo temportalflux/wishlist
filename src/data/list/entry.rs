@@ -31,7 +31,7 @@ impl Default for Entry {
 }
 
 impl FromKdl<()> for Entry {
-	type Error = kdlize::error::Error;
+	type Error = anyhow::Error;
 
 	fn from_kdl<'doc>(node: &mut kdlize::NodeReader<'doc, ()>) -> Result<Self, Self::Error> {
 		let name = node.next_str_req()?.to_owned();
@@ -79,10 +79,8 @@ impl AsKdl for Entry {
 			}
 			node.build("quantity")
 		});
-		for tag in &self.tags {
-			node.push_child_entry("tag", tag.as_str());
-		}
-		node.push_child_t("kind", &self.kind);
+		node.push_children_t(("tag", self.tags.iter()));
+		node.push_child_t(("kind", &self.kind));
 		node
 	}
 }

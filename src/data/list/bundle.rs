@@ -10,7 +10,7 @@ pub struct Bundle {
 }
 
 impl FromKdl<()> for Bundle {
-	type Error = kdlize::error::Error;
+	type Error = anyhow::Error;
 
 	fn from_kdl<'doc>(node: &mut kdlize::NodeReader<'doc, ()>) -> Result<Self, Self::Error> {
 		let entries = node.query_all_t("scope() > entry")?;
@@ -21,9 +21,7 @@ impl FromKdl<()> for Bundle {
 impl AsKdl for Bundle {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		let mut node = kdlize::NodeBuilder::default();
-		for entry in &self.entries {
-			node.push_child_t("entry", entry);
-		}
+		node.push_children_t(("entry", self.entries.iter()));
 		node
 	}
 }

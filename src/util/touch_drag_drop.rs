@@ -4,7 +4,6 @@ use gloo_events::EventListenerOptions;
 use gloo_timers::callback::Timeout;
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
-use yew_hooks::use_event;
 
 static DOUBLE_CLICK_MS: u128 = 500;
 static CONTEXT_MENU_ACTION_MS: u32 = 900;

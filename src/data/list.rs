@@ -25,9 +25,20 @@ pub enum RecordError {
 	Database(#[from] database::Error),
 	#[error(transparent)]
 	Parsing(#[from] kdl::KdlError),
-	#[error(transparent)]
-	Interpretting(#[from] kdlize::error::Error),
+	#[error("{0}")]
+	Interpretting(String),
 }
+impl From<anyhow::Error> for RecordError {
+	fn from(value: anyhow::Error) -> Self {
+		Self::Interpretting(format!("{value:?}"))
+	}
+}
+impl From<kdlize::error::Error> for RecordError {
+	fn from(value: kdlize::error::Error) -> Self {
+		Self::Interpretting(format!("{value:?}"))
+	}
+}
+
 impl super::RecordData for List {
 	type Record = crate::database::List;
 	type Error = RecordError;
@@ -46,7 +57,7 @@ impl super::RecordData for List {
 kdlize::impl_kdl_node!(List, "list");
 
 impl FromKdl<()> for List {
-	type Error = kdlize::error::Error;
+	type Error = anyhow::Error;
 
 	fn from_kdl<'doc>(node: &mut kdlize::NodeReader<'doc, ()>) -> Result<Self, Self::Error> {
 		let name = node.next_str_req()?.to_owned();
@@ -68,9 +79,7 @@ impl AsKdl for List {
 		for invitee in &self.invitees {
 			node.push_child_entry("invite", invitee.as_str());
 		}
-		for entry in &self.entries {
-			node.push_child_t("entry", entry);
-		}
+		node.push_children_t(("entry", self.entries.iter()));
 		node
 	}
 }

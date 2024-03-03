@@ -28,13 +28,9 @@ impl FromKdl<()> for Idea {
 impl AsKdl for Idea {
 	fn as_kdl(&self) -> kdlize::NodeBuilder {
 		let mut node = kdlize::NodeBuilder::default();
-		if let Some(url) = &self.image_url {
-			node.push_child_t("image", url);
-		}
-		node.push_child_entry("estimated_cost", self.estimated_cost as i64);
-		for url in &self.example_urls {
-			node.push_child_t("example", url);
-		}
+		node.push_child_t(("image", &self.image_url));
+		node.push_child_t(("estimated_cost", &self.estimated_cost));
+		node.push_children_t(("example", self.example_urls.iter()));
 		node
 	}
 }

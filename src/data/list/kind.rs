@@ -97,7 +97,7 @@ impl From<KindId> for Kind {
 }
 
 impl FromKdl<()> for Kind {
-	type Error = kdlize::error::Error;
+	type Error = anyhow::Error;
 
 	fn from_kdl<'doc>(node: &mut kdlize::NodeReader<'doc, ()>) -> Result<Self, Self::Error> {
 		match node.next_str_req_t()? {
